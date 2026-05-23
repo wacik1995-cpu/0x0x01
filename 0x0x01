@@ -1,0 +1,2023 @@
+-- ====================================================================================================
+--                                 0 x 0 x 0 1   M O D E R N   H U B  (FULL RELEASE)
+-- ====================================================================================================
+
+if game.CoreGui:FindFirstChild("ModernHub") then game.CoreGui.ModernHub:Destroy() end
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local TextChatService = game:GetService("TextChatService")
+
+-- Owner Security Configuration
+local OWNER_ID = 5053082018
+local isOwner = (LocalPlayer.UserId == OWNER_ID)
+
+-- Main UI Elements (Full Deep Slate Black + Electric Purple Highlights)
+local THEME_PURPLE = Color3.fromRGB(180, 110, 255)
+local COLOR_BG = Color3.fromRGB(22, 22, 28)
+local COLOR_STROKE = Color3.fromRGB(15, 15, 20)
+
+-- Exclusive Chat Colors
+local CHAT_BLACK = Color3.fromRGB(0, 0, 0)
+local CHAT_DARK_PURPLE = Color3.fromRGB(38, 14, 71)
+local CHAT_BRIGHT_PURPLE = Color3.fromRGB(205, 160, 255) 
+local CHAT_SLIGHT_PURPLE = Color3.fromRGB(185, 140, 235)
+
+-- ====================================================================================================
+-- ⚙️ ZDE MŮŽEŠ UPRAVIT TEXT V OKNĚ UPDATE (PODPORUJE NOVÉ ŘÁDKY \n)
+-- ====================================================================================================
+local GlobalUpdateTextString = "--- Update @ Texts: ---\n\n i Created New 0x0x01 Ui. v6 "
+
+local ModernHub = Instance.new("ScreenGui")
+ModernHub.Name = "ModernHub"
+ModernHub.Parent = game.CoreGui
+ModernHub.ResetOnSpawn = false
+ModernHub.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local openWindows = {}
+local activeFramesForTransparency = {}
+local globalTransparencyValue = 0.1
+
+local tweenInfoQuick = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local tweenInfoPop = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+-- Main Global Layout Windows Elements
+local MainWindowFrame = Instance.new("Frame")
+local GlobalSidebar = Instance.new("ScrollingFrame")
+local GlobalContainer = Instance.new("Frame")
+local currentContainerFrame = nil
+local registeredTabs = {}
+
+-- ====================================================================================================
+--                                AUTOMATIC CHAT THEMES
+-- ====================================================================================================
+
+local function applyMultiToneChat()
+    task.spawn(function()
+        local chatWindow = TextChatService:FindFirstChildOfClass("ChatWindowConfiguration")
+        local chatInput = TextChatService:FindFirstChildOfClass("ChatInputBarConfiguration")
+        
+        if chatWindow then
+            chatWindow.BackgroundColor3 = CHAT_BLACK
+            chatWindow.BackgroundTransparency = 0.15
+            chatWindow.TextColor3 = CHAT_BRIGHT_PURPLE
+        end
+        if chatInput then
+            chatInput.BackgroundColor3 = CHAT_DARK_PURPLE
+            chatInput.BackgroundTransparency = 0.3
+            chatInput.TextColor3 = CHAT_BRIGHT_PURPLE
+        end
+    end)
+
+    task.spawn(function()
+        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+        if not playerGui then return end
+        
+        local chatGui = playerGui:WaitForChild("Chat", 3)
+        if chatGui then
+            local function RecurseAndColorChat(instance)
+                if instance:IsA("Frame") or instance:IsA("ScrollingFrame") then
+                    if instance.Name == "Frame" or instance.Name == "Background" then
+                        instance.BackgroundColor3 = CHAT_BLACK
+                    elseif instance.Name:find("Chat") or instance.Name:find("Message") then
+                        instance.BackgroundColor3 = CHAT_DARK_PURPLE
+                        instance.BackgroundTransparency = 0.5
+                    end
+                elseif instance:IsA("TextLabel") or instance:IsA("TextBox") then
+                    local stroke = instance:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke", instance)
+                    stroke.Thickness = 1.2
+                    stroke.Color = CHAT_BLACK
+                    
+                    if instance.Name:find("Name") or instance.Name:find("User") or instance.Name:find("Sender") then
+                        instance.TextColor3 = CHAT_SLIGHT_PURPLE
+                    else
+                        instance.TextColor3 = Color3.fromRGB(235, 215, 255)
+                    end
+                end
+                for _, child in ipairs(instance:GetChildren()) do
+                    RecurseAndColorChat(child)
+                end
+            end
+            
+            RecurseAndColorChat(chatGui)
+            chatGui.ChildAdded:Connect(RecurseAndColorChat)
+        end
+    end)
+end
+
+applyMultiToneChat()
+
+-- ====================================================================================================
+--                                   HIGH VISIBILITY TEXT STYLE & DRAG
+-- ====================================================================================================
+
+local function applySlimTextStyle(textLabel, size)
+    textLabel.TextColor3 = THEME_PURPLE
+    textLabel.TextSize = size or 16
+    textLabel.TextWrapped = true
+    textLabel.Font = Enum.Font.GothamBold
+    
+    local stroke = textLabel:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke", textLabel)
+    stroke.Color = COLOR_STROKE
+    stroke.Thickness = 1.5
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+end
+
+local function makeElementDraggable(topBar, mainFrame)
+    local dragging, dragInput, dragStart, startPos
+    topBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    topBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- ====================================================================================================
+--                               UPPER RIGHT CORNER BUTTON EXECUTION NOTIFICATION
+-- ====================================================================================================
+
+local function showExecutionNotice(scriptName)
+    local NoticeBox = Instance.new("Frame")
+    NoticeBox.Name = "ExecutionNotice"
+    NoticeBox.Size = UDim2.new(0, 260, 0, 50)
+    NoticeBox.Position = UDim2.new(1, 300, 0, 40) -- Starts completely off-screen
+    NoticeBox.BackgroundColor3 = COLOR_BG
+    NoticeBox.BackgroundTransparency = 0.1
+    NoticeBox.ClipsDescendants = true
+    NoticeBox.Parent = ModernHub
+
+    Instance.new("UICorner", NoticeBox).CornerRadius = UDim.new(0, 8)
+    local nStroke = Instance.new("UIStroke", NoticeBox)
+    nStroke.Color = THEME_PURPLE
+    nStroke.Thickness = 1
+
+    local NoticeText = Instance.new("TextLabel", NoticeBox)
+    NoticeText.Size = UDim2.new(1, -20, 1, 0)
+    NoticeText.Position = UDim2.new(0, 10, 0, 0)
+    NoticeText.BackgroundTransparency = 1
+    NoticeText.Text = "Executing: " .. scriptName
+    applySlimTextStyle(NoticeText, 13)
+    NoticeText.TextXAlignment = Enum.TextXAlignment.Center
+
+    -- Slide In Animation
+    TweenService:Create(NoticeBox, tweenInfoPop, {Position = UDim2.new(1, -280, 0, 40)}):Play()
+
+    -- Slide Out and Destroy Animation after 3 seconds
+    task.delay(3, function()
+        if NoticeBox and NoticeBox.Parent then
+            local closeTween = TweenService:Create(NoticeBox, tweenInfoQuick, {Position = UDim2.new(1, 300, 0, 40)})
+            closeTween:Play()
+            closeTween.Completed:Connect(function()
+                NoticeBox:Destroy()
+            end)
+        end
+    end)
+end
+
+-- ====================================================================================================
+--                                 INSTANT BACKGROUND WINDOW GENERATION ENGINE
+-- ====================================================================================================
+
+MainWindowFrame.Name = "MainGuiBox"
+MainWindowFrame.BackgroundColor3 = COLOR_BG
+MainWindowFrame.ClipsDescendants = true
+MainWindowFrame.Visible = false
+MainWindowFrame.Size = UDim2.new(0, 900, 0, 700)
+MainWindowFrame.Position = UDim2.new(0.5, -450, 0.5, -350)
+MainWindowFrame.Parent = ModernHub
+
+Instance.new("UICorner", MainWindowFrame).CornerRadius = UDim.new(0, 12)
+local boxStroke = Instance.new("UIStroke", MainWindowFrame)
+boxStroke.Color = THEME_PURPLE
+boxStroke.Thickness = 1
+
+local DragBar = Instance.new("Frame", MainWindowFrame)
+DragBar.Size = UDim2.new(1, 0, 0, 35)
+DragBar.BackgroundTransparency = 1
+makeElementDraggable(DragBar, MainWindowFrame)
+
+local TitleLabel = Instance.new("TextLabel", MainWindowFrame)
+TitleLabel.Size = UDim2.new(1, 0, 0, 40)
+TitleLabel.Position = UDim2.new(0, 0, 0, 5)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "MAIN GUI"
+applySlimTextStyle(TitleLabel, 20)
+
+local boxCloseBtn = Instance.new("TextButton", MainWindowFrame)
+boxCloseBtn.Size = UDim2.new(0, 24, 0, 24)
+boxCloseBtn.Position = UDim2.new(1, -34, 0, 13)
+boxCloseBtn.BackgroundColor3 = COLOR_BG
+boxCloseBtn.Text = "X"
+boxCloseBtn.Font = Enum.Font.GothamBold
+applySlimTextStyle(boxCloseBtn, 14)
+
+Instance.new("UICorner", boxCloseBtn).CornerRadius = UDim.new(1, 0)
+local bcStroke = Instance.new("UIStroke", boxCloseBtn)
+bcStroke.Color = THEME_PURPLE
+bcStroke.Thickness = 1
+
+GlobalSidebar.Size = UDim2.new(0, 220, 1, -70)
+GlobalSidebar.Position = UDim2.new(0, 15, 0, 55)
+GlobalSidebar.BackgroundTransparency = 1
+GlobalSidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
+GlobalSidebar.ScrollBarThickness = 2
+GlobalSidebar.Parent = MainWindowFrame
+
+local sidebarLayout = Instance.new("UIListLayout", GlobalSidebar)
+sidebarLayout.Padding = UDim.new(0, 8)
+sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+GlobalContainer.Size = UDim2.new(1, -265, 1, -70)
+GlobalContainer.Position = UDim2.new(0, 250, 0, 55)
+GlobalContainer.BackgroundColor3 = COLOR_BG
+GlobalContainer.BackgroundTransparency = 0.3
+GlobalContainer.Parent = MainWindowFrame
+
+Instance.new("UICorner", GlobalContainer).CornerRadius = UDim.new(0, 10)
+local cStroke = Instance.new("UIStroke", GlobalContainer)
+cStroke.Color = THEME_PURPLE
+cStroke.Thickness = 1
+
+sidebarLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    GlobalSidebar.CanvasSize = UDim2.new(0, 0, 0, sidebarLayout.AbsoluteContentSize.Y + 10)
+end)
+
+boxCloseBtn.MouseButton1Click:Connect(function()
+    local closeTween = TweenService:Create(MainWindowFrame, tweenInfoQuick, {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundTransparency = 1
+    })
+    closeTween:Play()
+    closeTween.Completed:Connect(function()
+        MainWindowFrame.Visible = false
+    end)
+    openWindows["MAIN GUI"] = nil
+end)
+
+-- ====================================================================================================
+--               METATABLE ENGINE WRAPPER (BINDS INTERFACE CALL LAYER)
+-- ====================================================================================================
+
+local function createCategory(categoryName)
+    local CategoryContentFrame = Instance.new("ScrollingFrame")
+    CategoryContentFrame.Size = UDim2.new(1, -20, 1, -20)
+    CategoryContentFrame.Position = UDim2.new(0, 10, 0, 10)
+    CategoryContentFrame.BackgroundTransparency = 1
+    CategoryContentFrame.Visible = false
+    CategoryContentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    CategoryContentFrame.ScrollBarThickness = 3
+    CategoryContentFrame.Parent = GlobalContainer
+
+    local contentLayout = Instance.new("UIListLayout", CategoryContentFrame)
+    contentLayout.Padding = UDim.new(0, 8)
+    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        CategoryContentFrame.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+    end)
+
+    local TabButton = Instance.new("TextButton", GlobalSidebar)
+    TabButton.Size = UDim2.new(1, -10, 0, 45)
+    TabButton.BackgroundColor3 = COLOR_BG
+    TabButton.Text = categoryName
+    applySlimTextStyle(TabButton, 15)
+    
+    Instance.new("UICorner", TabButton).CornerRadius = UDim.new(0, 8)
+    local tStroke = Instance.new("UIStroke", TabButton)
+    tStroke.Color = THEME_PURPLE
+    tStroke.Thickness = 1
+
+    TabButton.MouseButton1Click:Connect(function()
+        for _, frame in pairs(registeredTabs) do
+            frame.Visible = false
+        end
+        CategoryContentFrame.Visible = true
+        currentContainerFrame = CategoryContentFrame
+    end)
+
+    if not currentContainerFrame then
+        CategoryContentFrame.Visible = true
+        currentContainerFrame = CategoryContentFrame
+    end
+
+    table.insert(registeredTabs, CategoryContentFrame)
+
+    local tabProxy = {}
+    
+    local function dummyFunction(...) end
+
+    return setmetatable(tabProxy, {
+        __call = function(_, btnName, callback)
+            if type(btnName) == "string" and type(callback) == "function" then
+                local scrBtn = Instance.new("TextButton", CategoryContentFrame)
+                scrBtn.Size = UDim2.new(1, -10, 0, 45)
+                scrBtn.BackgroundColor3 = COLOR_BG
+                scrBtn.Text = btnName
+                applySlimTextStyle(scrBtn, 14)
+                
+                Instance.new("UICorner", scrBtn).CornerRadius = UDim.new(0, 8)
+                local sStroke = Instance.new("UIStroke", scrBtn)
+                sStroke.Color = THEME_PURPLE
+                sStroke.Thickness = 1
+                
+                scrBtn.MouseButton1Click:Connect(function()
+                    showExecutionNotice(btnName) -- Triggers the Upper Right Notice Box frame layout update
+                    callback()
+                end)
+                return scrBtn
+            else
+                return dummyFunction
+            end
+        end,
+        __index = function()
+            return dummyFunction
+        end
+    })
+end
+
+-- ====================================================================================================
+--                                   BOX TOGGLE CONTROLLER MODULE
+-- ====================================================================================================
+
+local function createGuiBox(titleText, width, height)
+    if openWindows[titleText] then
+        local windowToClose = openWindows[titleText]
+        local closeTween = TweenService:Create(windowToClose, tweenInfoQuick, {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            BackgroundTransparency = 1
+        })
+        closeTween:Play()
+        closeTween.Completed:Connect(function()
+            windowToClose.Visible = false
+        end)
+        openWindows[titleText] = nil
+        return nil
+    end
+
+    local GuiBox = nil
+    
+    if titleText == "MAIN GUI" then
+        GuiBox = MainWindowFrame
+    else
+        GuiBox = Instance.new("Frame")
+        GuiBox.Name = titleText .. "Box"
+        GuiBox.BackgroundColor3 = COLOR_BG
+        GuiBox.ClipsDescendants = true
+        GuiBox.Parent = ModernHub
+
+        Instance.new("UICorner", GuiBox).CornerRadius = UDim.new(0, 12)
+        local boxStroke = Instance.new("UIStroke", GuiBox)
+        boxStroke.Color = THEME_PURPLE
+        boxStroke.Thickness = 1
+
+        local DragBar = Instance.new("Frame", GuiBox)
+        DragBar.Size = UDim2.new(1, 0, 0, 35)
+        DragBar.BackgroundTransparency = 1
+        makeElementDraggable(DragBar, GuiBox)
+
+        local TitleLabel = Instance.new("TextLabel", GuiBox)
+        TitleLabel.Size = UDim2.new(1, 0, 0, 40)
+        TitleLabel.Position = UDim2.new(0, 0, 0, 5)
+        TitleLabel.BackgroundTransparency = 1
+        TitleLabel.Text = titleText
+        applySlimTextStyle(TitleLabel, 20)
+
+        local boxCloseBtn = Instance.new("TextButton", GuiBox)
+        boxCloseBtn.Size = UDim2.new(0, 24, 0, 24)
+        boxCloseBtn.Position = UDim2.new(1, -34, 0, 13)
+        boxCloseBtn.BackgroundColor3 = COLOR_BG
+        boxCloseBtn.Text = "X"
+        boxCloseBtn.Font = Enum.Font.GothamBold
+        applySlimTextStyle(boxCloseBtn, 14)
+
+        Instance.new("UICorner", boxCloseBtn).CornerRadius = UDim.new(1, 0)
+        local bcStroke = Instance.new("UIStroke", boxCloseBtn)
+        bcStroke.Color = THEME_PURPLE
+        bcStroke.Thickness = 1
+
+        boxCloseBtn.MouseButton1Click:Connect(function()
+            local closeTween = TweenService:Create(GuiBox, tweenInfoQuick, {
+                Size = UDim2.new(0, 0, 0, 0),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                BackgroundTransparency = 1
+            })
+            closeTween:Play()
+            closeTween.Completed:Connect(function()
+                GuiBox.Visible = false
+            end)
+            openWindows[titleText] = nil
+        end)
+        
+        -- Special rendering injector frame block if it's the dynamic Update Box window container layout
+        if titleText == "UPDATES" then
+            local UpdateScroller = Instance.new("ScrollingFrame", GuiBox)
+            UpdateScroller.Size = UDim2.new(1, -40, 1, -70)
+            UpdateScroller.Position = UDim2.new(0, 20, 0, 55)
+            UpdateScroller.BackgroundTransparency = 1
+            UpdateScroller.CanvasSize = UDim2.new(0, 0, 0, 500)
+            UpdateScroller.ScrollBarThickness = 3
+
+            local LiveUpdateLabel = Instance.new("TextLabel", UpdateScroller)
+            LiveUpdateLabel.Size = UDim2.new(1, -10, 1, 0)
+            LiveUpdateLabel.Position = UDim2.new(0, 5, 0, 5)
+            LiveUpdateLabel.BackgroundTransparency = 1
+            LiveUpdateLabel.TextYAlignment = Enum.TextYAlignment.Top
+            LiveUpdateLabel.TextXAlignment = Enum.TextXAlignment.Left
+            LiveUpdateLabel.Text = GlobalUpdateTextString -- Dynamic reference string update variable mapping hook
+            applySlimTextStyle(LiveUpdateLabel, 14)
+        end
+        
+        activeFramesForTransparency[titleText] = GuiBox
+    end
+
+    GuiBox.Visible = true
+    GuiBox.Size = UDim2.new(0, 0, 0, 0)
+    GuiBox.Position = UDim2.new(0.5, 0, 0.5, 0)
+    GuiBox.BackgroundTransparency = 1
+
+    TweenService:Create(GuiBox, tweenInfoPop, {
+        Size = UDim2.new(0, width, 0, height),
+        Position = UDim2.new(0.5, -width/2, 0.5, -height/2),
+        BackgroundTransparency = globalTransparencyValue
+    }):Play()
+
+    openWindows[titleText] = GuiBox
+    return GuiBox
+end
+
+-- ====================================================================================================
+--                                   SETTINGS WINDOW
+-- ====================================================================================================
+
+local function openSettingsWindow()
+    local SettingsWindow = createGuiBox("SETTINGS", 700, 600)
+    if not SettingsWindow then return end
+    
+    local InfoLabel = Instance.new("TextLabel", SettingsWindow)
+    InfoLabel.Size = UDim2.new(1, -40, 0, 40)
+    InfoLabel.Position = UDim2.new(0, 20, 0, 70)
+    InfoLabel.BackgroundTransparency = 1
+    InfoLabel.Text = "Drag the Purple Circle Slider to update Transparency:"
+    applySlimTextStyle(InfoLabel, 16)
+
+    local SliderLine = Instance.new("Frame", SettingsWindow)
+    SliderLine.Name = "SliderLine"
+    SliderLine.Size = UDim2.new(0, 400, 0, 6)
+    SliderLine.Position = UDim2.new(0.5, -200, 0, 160)
+    SliderLine.BackgroundColor3 = THEME_PURPLE
+    SliderLine.BorderSizePixel = 0
+    Instance.new("UICorner", SliderLine).CornerRadius = UDim.new(1, 0)
+
+    local SliderCircle = Instance.new("TextButton", SliderLine)
+    SliderCircle.Name = "SliderCircle"
+    SliderCircle.Size = UDim2.new(0, 24, 0, 24)
+    SliderCircle.Position = UDim2.new(globalTransparencyValue, -12, 0.5, -12)
+    SliderCircle.BackgroundColor3 = THEME_PURPLE
+    SliderCircle.Text = ""
+    Instance.new("UICorner", SliderCircle).CornerRadius = UDim.new(1, 0)
+
+    local scStroke = Instance.new("UIStroke", SliderCircle)
+    scStroke.Color = COLOR_STROKE
+    scStroke.Thickness = 1.5
+
+    local ValueLabel = Instance.new("TextLabel", SettingsWindow)
+    ValueLabel.Size = UDim2.new(0, 100, 0, 30)
+    ValueLabel.Position = UDim2.new(0.5, -50, 0, 190)
+    ValueLabel.BackgroundTransparency = 1
+    ValueLabel.Text = tostring(math.floor(globalTransparencyValue * 100)) .. "%"
+    applySlimTextStyle(ValueLabel, 15)
+
+    local isDragging = false
+    SliderCircle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = true
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local absoluteX = SliderLine.AbsolutePosition.X
+            local absoluteWidth = SliderLine.AbsoluteSize.X
+            local scale = math.clamp((input.Position.X - absoluteX) / absoluteWidth, 0, 0.85)
+            
+            SliderCircle.Position = UDim2.new(scale, -12, 0.5, -12)
+            ValueLabel.Text = tostring(math.floor(scale * 100)) .. "%"
+            
+            globalTransparencyValue = scale
+            if MainWindowFrame then MainWindowFrame.BackgroundTransparency = scale end
+            for _, frame in pairs(activeFramesForTransparency) do
+                if frame and frame.Parent then
+                    frame.BackgroundTransparency = scale
+                end
+            end
+        end
+    end)
+end
+
+-- ====================================================================================================
+--                                   OWNER CMD WINDOW (CONSOLE SYSTEM)
+-- ====================================================================================================
+
+local function openOwnerCmdConsole()
+    local ConsoleWindow = createGuiBox("CONSOLE", 700, 600)
+    if not ConsoleWindow then return end
+    
+    local LogBox = Instance.new("ScrollingFrame", ConsoleWindow)
+    LogBox.Size = UDim2.new(1, -40, 1, -100)
+    LogBox.Position = UDim2.new(0, 20, 0, 60)
+    LogBox.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
+    LogBox.CanvasSize = UDim2.new(0, 0, 0, 1000)
+    LogBox.ScrollBarThickness = 4
+    Instance.new("UICorner", LogBox).CornerRadius = UDim.new(0, 8)
+    
+    local lStroke = Instance.new("UIStroke", LogBox)
+    lStroke.Color = THEME_PURPLE
+    lStroke.Thickness = 1
+
+    local LogText = Instance.new("TextLabel", LogBox)
+    LogText.Size = UDim2.new(1, -20, 1, 0)
+    LogText.Position = UDim2.new(0, 10, 0, 10)
+    LogText.BackgroundTransparency = 1
+    LogText.TextYAlignment = Enum.TextYAlignment.Top
+    LogText.TextXAlignment = Enum.TextXAlignment.Left
+    LogText.Text = "--- ModernHub Console System Loaded ---\n[System]: Environment checked.\n[System]: Active session verified for ID: " .. tostring(LocalPlayer.UserId)
+    applySlimTextStyle(LogText, 13)
+end
+
+-- ====================================================================================================
+--                                   LOWER MAIN BAR WITH BUTTONS (STATIC)
+-- ====================================================================================================
+
+local MainBar = Instance.new("Frame")
+MainBar.Name = "MainBar"
+MainBar.Size = UDim2.new(0, 580, 0, 70)
+MainBar.Position = UDim2.new(0.5, -290, 1, -110)
+MainBar.BackgroundColor3 = COLOR_BG
+MainBar.BackgroundTransparency = 0.1
+MainBar.Parent = ModernHub
+
+activeFramesForTransparency["MainBar"] = MainBar
+
+Instance.new("UICorner", MainBar).CornerRadius = UDim.new(0, 14)
+local mStroke = Instance.new("UIStroke", MainBar)
+mStroke.Color = THEME_PURPLE
+mStroke.Thickness = 1
+
+local function createCleanBarButton(text, parent, size, pos, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = size
+    btn.Position = pos
+    btn.BackgroundColor3 = COLOR_BG
+    btn.AutoButtonColor = true
+    btn.Parent = parent
+    
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+    local bStroke = Instance.new("UIStroke", btn)
+    bStroke.Color = THEME_PURPLE
+    bStroke.Thickness = 1
+
+    btn.Text = text
+    applySlimTextStyle(btn, 15)
+    
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local btnOpen = createCleanBarButton("Open GUI", MainBar, UDim2.new(0, 125, 0, 45), UDim2.new(0, 15, 0.5, -22), function()
+    createGuiBox("MAIN GUI", 900, 700)
+end)
+
+local btnOwnerCmd = createCleanBarButton("Owner CMD", MainBar, UDim2.new(0, 125, 0, 45), UDim2.new(0, 155, 0.5, -22), function()
+    openOwnerCmdConsole()
+end)
+
+local btnSettings = createCleanBarButton("Settings", MainBar, UDim2.new(0, 125, 0, 45), UDim2.new(0, 295, 0.5, -22), function()
+    openSettingsWindow()
+end)
+
+local btnUpdate = createCleanBarButton("Update", MainBar, UDim2.new(0, 125, 0, 45), UDim2.new(0, 435, 0.5, -22), function()
+    createGuiBox("UPDATES", 700, 600)
+end)
+
+local closeBtn = Instance.new("TextButton", MainBar)
+closeBtn.Size = UDim2.new(0, 20, 0, 20)
+closeBtn.Position = UDim2.new(1, -10, 0, -10)
+closeBtn.BackgroundColor3 = COLOR_BG
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.GothamBold
+applySlimTextStyle(closeBtn, 12)
+
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
+local cStroke = Instance.new("UIStroke", closeBtn)
+cStroke.Color = THEME_PURPLE
+cStroke.Thickness = 1
+
+closeBtn.MouseButton1Click:Connect(function() ModernHub:Destroy() end)
+
+-- ====================================================================================================
+--                                   TIMED NOTIFY BOX WITH TYPEWRITER EFFECT
+-- ====================================================================================================
+
+local NotifyBox = Instance.new("Frame")
+NotifyBox.Name = "WelcomeNotifyBox"
+NotifyBox.Size = UDim2.new(0, 360, 0, 130)
+NotifyBox.Position = UDim2.new(1, 400, 1, -150)
+NotifyBox.BackgroundColor3 = COLOR_BG
+NotifyBox.BackgroundTransparency = 0.1
+NotifyBox.Parent = ModernHub
+
+Instance.new("UICorner", NotifyBox).CornerRadius = UDim.new(0, 12)
+local nStroke = Instance.new("UIStroke", NotifyBox)
+nStroke.Color = THEME_PURPLE
+nStroke.Thickness = 1
+
+local HeadIcon = Instance.new("ImageLabel", NotifyBox)
+HeadIcon.Name = "HeadIcon"
+HeadIcon.Size = UDim2.new(0, 80, 0, 80)
+HeadIcon.Position = UDim2.new(0, 15, 0.5, -40)
+HeadIcon.BackgroundColor3 = COLOR_BG
+Instance.new("UICorner", HeadIcon).CornerRadius = UDim.new(0, 8)
+local hStroke = Instance.new("UIStroke", HeadIcon)
+hStroke.Color = THEME_PURPLE
+hStroke.Thickness = 1
+
+task.spawn(function()
+    local success, content, isReady = pcall(function()
+        return Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+    end)
+    if success and content then
+        HeadIcon.Image = content
+    else
+        HeadIcon.Image = "rbxassetid://14413158021" 
+    end
+end)
+
+local WelcomeText = Instance.new("TextLabel", NotifyBox)
+WelcomeText.Name = "WelcomeText"
+WelcomeText.Size = UDim2.new(1, -120, 1, -50)
+WelcomeText.Position = UDim2.new(0, 105, 0, 10)
+WelcomeText.BackgroundTransparency = 1
+WelcomeText.TextXAlignment = Enum.TextXAlignment.Left
+applySlimTextStyle(WelcomeText, 12)
+
+local UserIdLabel = Instance.new("TextLabel", NotifyBox)
+UserIdLabel.Name = "UserIdLabel"
+UserIdLabel.Size = UDim2.new(1, -120, 0, 20)
+UserIdLabel.Position = UDim2.new(0, 105, 1, -25)
+UserIdLabel.BackgroundTransparency = 1
+UserIdLabel.TextXAlignment = Enum.TextXAlignment.Left
+UserIdLabel.Text = "ID: " .. tostring(LocalPlayer.UserId)
+applySlimTextStyle(UserIdLabel, 11)
+
+TweenService:Create(NotifyBox, tweenInfoPop, {Position = UDim2.new(1, -380, 1, -150)}):Play()
+
+task.spawn(function()
+    local targetText = ""
+    if isOwner then
+        targetText = "Hello Owner Welcome To Your Script/ui.\n\n❤ SECRET: I LOVE NEJLA!!"
+    else
+        targetText = "[bot] : Hello " .. LocalPlayer.Name .. " Welcome to my Script I hope you will Get along with it!."
+    end
+    
+    for i = 1, #targetText do
+        WelcomeText.Text = string.sub(targetText, 1, i)
+        task.wait(0.03)
+    end
+end)
+
+task.delay(15, function()
+    if NotifyBox and NotifyBox.Parent then
+        local hideTween = TweenService:Create(NotifyBox, tweenInfoQuick, {Position = UDim2.new(1, 400, 1, -150)})
+        hideTween:Play()
+        hideTween.Completed:Connect(function()
+            NotifyBox:Destroy()
+        end)
+    end
+end)
+
+-- ====================================================================================================
+-- 🛠️ YOUR CODE REGION (PLACED EXACTLY IN YOUR REQUESTED FORMAT SYNTAX STRUCTURE)
+-- ====================================================================================================
+
+
+
+-- AUDIO CATEGORY
+local Audio = createCategory("AUDIO")
+
+Audio("Mute All Sounds", function()
+	for _, sound in ipairs(workspace:GetDescendants()) do
+		if sound:IsA("Sound") then sound.Volume = 0 end
+	end
+	log("All current workspace sounds muted")
+end)
+
+Audio("Unmute All Sounds", function()
+	for _, sound in ipairs(workspace:GetDescendants()) do
+		if sound:IsA("Sound") then sound.Volume = 0.5 end
+	end
+	log("Workspace sounds restored to 0.5 volume")
+end)
+
+-- VISUALS CATEGORY
+local AddButton = createCategory("scripts")
+
+AddButton("Copy Discord Link", function()
+	if setclipboard then setclipboard("https://discord.gg/2VCwxnR5") end -- Dont delete this
+end) -- Dont delete this
+
+AddButton("0x0x01 Gui Teleporter", function()
+	local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+-- PHANTOM ANIMACE (BEZ ZMĚNY BARVY)
+local function phantomTeleport(targetPart)
+	local char = player.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+	
+	for _, part in pairs(char:GetDescendants()) do
+		if part:IsA("BasePart") or part:IsA("Decal") then
+			TweenService:Create(part, TweenInfo.new(0.4), {Transparency = 1}):Play()
+		end
+	end
+	
+	task.wait(0.4)
+	char.HumanoidRootPart.CFrame = targetPart.CFrame * CFrame.new(0, 0, 3)
+	
+	for _, part in pairs(char:GetDescendants()) do
+		if part:IsA("BasePart") or part:IsA("Decal") then
+			local targetTransparency = (part.Name == "HumanoidRootPart") and 1 or 0
+			TweenService:Create(part, TweenInfo.new(0.4), {Transparency = targetTransparency}):Play()
+		end
+	end
+end
+
+-- WARN NOTIFIKACE
+local function showWarn(targetName)
+	local screenGui = player.PlayerGui:FindFirstChild("TeleportGui")
+	if not screenGui then return end
+	
+	local warn = Instance.new("TextLabel")
+	warn.Size = UDim2.new(0, 280, 0, 45)
+	warn.Position = UDim2.new(1, 10, 0.05, 0)
+	warn.BackgroundColor3 = Color3.new(0, 0, 0)
+	warn.BorderColor3 = Color3.new(1, 0, 0)
+	warn.BorderSizePixel = 2
+	warn.Text = "Teleported to ["..targetName.."]!"
+	warn.TextColor3 = Color3.new(1, 1, 1)
+	warn.Font = Enum.Font.Code
+	warn.TextSize = 15
+	warn.Parent = screenGui
+
+	warn:TweenPosition(UDim2.new(1, -290, 0.05, 0), "Out", "Quart", 0.5, true)
+	task.wait(2.5)
+	warn:TweenPosition(UDim2.new(1, 10, 0.05, 0), "In", "Quart", 0.5, true, function() warn:Destroy() end)
+end
+
+local function createGui()
+	local old = player.PlayerGui:FindFirstChild("TeleportGui")
+	if old then old:Destroy() end
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "TeleportGui"
+	screenGui.Parent = player:WaitForChild("PlayerGui")
+	screenGui.ResetOnSpawn = false
+
+	local main = Instance.new("Frame")
+	main.Size = UDim2.new(0, 400, 0, 500)
+	main.Position = UDim2.new(0.5, -200, 0.2, 0)
+	main.BackgroundColor3 = Color3.new(0, 0, 0)
+	main.BorderColor3 = Color3.new(1, 0, 0)
+	main.BorderSizePixel = 2
+	main.Draggable = true
+	main.Active = true
+	main.ClipsDescendants = true
+	main.Parent = screenGui
+
+	-- LOGO
+	local logo = Instance.new("ImageLabel")
+	logo.Size = UDim2.new(0, 45, 0, 45)
+	logo.Position = UDim2.new(0, 5, 0, 5)
+	logo.Image = "rbxassetid://72896060072957"
+	logo.BackgroundTransparency = 1
+	logo.Parent = main
+
+	-- GLITCH TITLE
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -140, 0, 60)
+	title.Position = UDim2.new(0, 60, 0, 0)
+	title.Text = "0x0x01"
+	title.TextSize = 35
+	title.TextColor3 = Color3.new(1, 0, 0)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.Code
+	title.Parent = main
+
+	local gChars = {"#", "@", "]", "}", "ß", "$", "{", "÷"}
+	RunService.RenderStepped:Connect(function()
+		if math.random() > 0.85 then
+			local t = ""
+			for i=1,6 do t=t..gChars[math.random(#gChars)] end
+			title.Text = t
+		else
+			title.Text = "0x0x01"
+		end
+	end)
+
+	-- TLAČÍTKO ZAVŘÍT [X]
+	local close = Instance.new("TextButton")
+	close.Size = UDim2.new(0, 40, 0, 40)
+	close.Position = UDim2.new(1, -45, 0, 5)
+	close.Text = "X"
+	close.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+	close.TextColor3 = Color3.new(1, 1, 1)
+	close.Font = Enum.Font.Code
+	close.Parent = main
+	close.MouseButton1Click:Connect(function() screenGui:Destroy() end)
+
+	-- TLAČÍTKO MINIMALIZACE [-]
+	local minBtn = Instance.new("TextButton")
+	minBtn.Size = UDim2.new(0, 40, 0, 40)
+	minBtn.Position = UDim2.new(1, -90, 0, 5)
+	minBtn.Text = "-"
+	minBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	minBtn.TextColor3 = Color3.new(1, 1, 1)
+	minBtn.Font = Enum.Font.Code
+	minBtn.Parent = main
+
+	-- SEARCH
+	local search = Instance.new("TextBox")
+	search.Size = UDim2.new(0.9, 0, 0, 35)
+	search.Position = UDim2.new(0.05, 0, 0, 75)
+	search.BackgroundColor3 = Color3.fromRGB(15, 0, 0)
+	search.BorderColor3 = Color3.new(1, 0, 0)
+	search.PlaceholderText = "Search Player..."
+	search.TextSize = 15
+	search.TextColor3 = Color3.new(1, 1, 1)
+	search.Font = Enum.Font.Code
+	search.Parent = main
+
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(0.9, 0, 0.7, 0)
+	scroll.Position = UDim2.new(0.05, 0, 0, 120)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarImageColor3 = Color3.new(1, 0, 0)
+	scroll.Parent = main
+	local layout = Instance.new("UIListLayout", scroll)
+	layout.Padding = UDim.new(0, 5)
+
+	-- LOGIKA MINIMALIZACE
+	local isMinimized = false
+	minBtn.MouseButton1Click:Connect(function()
+		isMinimized = not isMinimized
+		scroll.Visible = not isMinimized
+		search.Visible = not isMinimized
+		main:TweenSize(isMinimized and UDim2.new(0, 400, 0, 50) or UDim2.new(0, 400, 0, 500), "Out", "Quart", 0.3, true)
+		minBtn.Text = isMinimized and "+" or "-"
+	end)
+
+	-- UPDATE LIST
+	local function update(filter)
+		for _, v in pairs(scroll:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player then
+				if filter == "" or string.find(p.DisplayName:lower(), filter:lower()) then
+					local b = Instance.new("TextButton")
+					b.Size = UDim2.new(1, 0, 0, 40)
+					b.Text = " " .. p.DisplayName .. " (@" .. p.Name .. ")"
+					b.TextSize = 15
+					b.BackgroundColor3 = Color3.fromRGB(10, 0, 0)
+					b.TextColor3 = Color3.new(1, 1, 1)
+					b.Font = Enum.Font.Code
+					b.TextXAlignment = Enum.TextXAlignment.Left
+					b.Parent = scroll
+					b.MouseButton1Click:Connect(function()
+						if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+							phantomTeleport(p.Character.HumanoidRootPart)
+							showWarn(p.DisplayName)
+						end
+					end)
+				end
+			end
+		end
+		scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+	end
+
+	search:GetPropertyChangedSignal("Text"):Connect(function() update(search.Text) end)
+	update("")
+end
+
+createGui()
+
+end) -- Dont delete this
+
+AddButton("infinite yield", function()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+end) -- Dont delete this
+
+AddButton("New Kick Gui -v3 - Venux", function()
+	-- SERVICES
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+-- KONFIGURACE
+local MY_USER_ID = 8921207808 
+local kickRemote = RS:FindFirstChild("KickPlayerRemote")
+local gameOwnerId = game.CreatorId
+
+-- CLEANUP
+if CoreGui:FindFirstChild("VenuxUltimate") then CoreGui.VenuxUltimate:Destroy() end
+
+local sg = Instance.new("ScreenGui")
+sg.Name = "VenuxUltimate"
+sg.Parent = CoreGui
+
+-- 1. ANIMATED NOTIFY BOX (Vlevo nahoře)
+local notifyBox = Instance.new("Frame")
+notifyBox.Size = UDim2.new(0, 220, 0, 85)
+notifyBox.Position = UDim2.new(0, -250, 0, 10) -- Startovní pozice mimo obrazovku
+notifyBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+notifyBox.BorderSizePixel = 0
+notifyBox.Parent = sg
+Instance.new("UICorner", notifyBox)
+
+local notifyTitle = Instance.new("TextLabel")
+notifyTitle.Size = UDim2.new(1, 0, 0, 25)
+notifyTitle.Text = "Venux System Check"
+notifyTitle.TextColor3 = Color3.fromRGB(0, 150, 255)
+notifyTitle.Font = Enum.Font.GothamBold
+notifyTitle.TextSize = 14
+notifyTitle.BackgroundTransparency = 1
+notifyTitle.Parent = notifyBox
+
+-- Owner Check
+local ownerStatus = (Players.LocalPlayer.UserId == MY_USER_ID) and "✅ Venux Owner" or "❌ Guest User"
+local ownerLabel = Instance.new("TextLabel")
+ownerLabel.Size = UDim2.new(1, 0, 0, 25)
+ownerLabel.Position = UDim2.new(0, 0, 0.35, 0)
+ownerLabel.Text = ownerStatus
+ownerLabel.TextColor3 = Color3.new(1, 1, 1)
+ownerLabel.Font = Enum.Font.Gotham
+ownerLabel.TextSize = 14
+ownerLabel.BackgroundTransparency = 1
+ownerLabel.Parent = notifyBox
+
+-- Device Check
+local deviceType = "PC"
+if UIS.TouchEnabled and not UIS.KeyboardEnabled then deviceType = "Mobile" end
+if UIS.GamepadEnabled then deviceType = "Console" end
+
+local deviceLabel = Instance.new("TextLabel")
+deviceLabel.Size = UDim2.new(1, 0, 0, 25)
+deviceLabel.Position = UDim2.new(0, 0, 0.65, 0)
+deviceLabel.Text = "Device: " .. deviceType
+deviceLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+deviceLabel.Font = Enum.Font.Gotham
+deviceLabel.TextSize = 14
+deviceLabel.BackgroundTransparency = 1
+deviceLabel.Parent = notifyBox
+
+-- ANIMACE NOTIFIKACE
+local function runNotify()
+    -- Vysunutí dovnitř
+    notifyBox:TweenPosition(UDim2.new(0, 15, 0, 15), "Out", "Back", 0.6, true)
+    
+    task.wait(12) -- Čas zobrazení
+    
+    -- Vysunutí ven a smazání
+    notifyBox:TweenPosition(UDim2.new(0, -250, 0, 15), "In", "Back", 0.6, true, function()
+        notifyBox:Destroy()
+    end)
+end
+task.spawn(runNotify)
+
+-- 2. DRAGGABLE LOGIC
+local function makeDraggable(gui, dragPart)
+    local dragging, dragStart, startPos
+    dragPart.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = gui.Position
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    dragPart.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+end
+
+-- 3. MAIN BUTTON & WINDOW
+local mainBtn = Instance.new("ImageButton")
+mainBtn.Size = UDim2.new(0, 60, 0, 60)
+mainBtn.Position = UDim2.new(0, 20, 0.5, -30)
+mainBtn.BackgroundTransparency = 1
+mainBtn.Image = "rbxassetid://6034287525"
+mainBtn.ImageColor3 = Color3.fromRGB(0, 150, 255)
+mainBtn.Parent = sg
+makeDraggable(mainBtn, mainBtn)
+
+local bLabel = Instance.new("TextLabel")
+bLabel.Size = UDim2.new(1, 0, 1, 0)
+bLabel.BackgroundTransparency = 1
+bLabel.Text = "VENUX"
+bLabel.TextColor3 = Color3.new(1, 1, 1)
+bLabel.Font = Enum.Font.GothamBold
+bLabel.TextSize = 14
+bLabel.Parent = mainBtn
+
+local window = Instance.new("Frame")
+window.Size = UDim2.new(0, 500, 0, 450)
+window.Position = UDim2.new(0.5, -250, 0.5, -225)
+window.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+window.Visible = false
+window.Parent = sg
+Instance.new("UICorner", window).CornerRadius = UDim.new(0, 12)
+
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 40)
+topBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+topBar.Parent = window
+Instance.new("UICorner", topBar)
+makeDraggable(window, topBar)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0.6, 0, 1, 0)
+title.Position = UDim2.new(0, 15, 0, 0)
+title.Text = "Venux System | FE"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.BackgroundTransparency = 1
+title.Parent = topBar
+
+-- 4. KICK ALL BUTTON
+local kaBtn = Instance.new("TextButton")
+kaBtn.Size = UDim2.new(0, 100, 0, 25)
+kaBtn.Position = UDim2.new(1, -150, 0.5, -12)
+kaBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+kaBtn.Text = "KICK ALL"
+kaBtn.TextColor3 = Color3.new(1, 1, 1)
+kaBtn.Font = Enum.Font.GothamBold
+kaBtn.TextSize = 12
+kaBtn.Parent = topBar
+Instance.new("UICorner", kaBtn)
+
+kaBtn.MouseButton1Click:Connect(function()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer and player.UserId ~= gameOwnerId then
+            pcall(function()
+                if kickRemote then kickRemote:FireServer(player) end
+                player:Kick("Server Wiped by Venux")
+            end)
+        end
+    end
+end)
+
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(0, 40, 0, 40)
+close.Position = UDim2.new(1, -40, 0, 0)
+close.Text = "X"
+close.TextColor3 = Color3.fromRGB(255, 60, 60)
+close.Font = Enum.Font.GothamBold
+close.TextSize = 20
+close.BackgroundTransparency = 1
+close.Parent = topBar
+close.MouseButton1Click:Connect(function() window.Visible = false end)
+
+-- 5. LISTING
+local scroller = Instance.new("ScrollingFrame")
+scroller.Size = UDim2.new(1, 0, 1, -40)
+scroller.Position = UDim2.new(0, 0, 0, 40)
+scroller.BackgroundTransparency = 1
+scroller.ScrollBarThickness = 4
+scroller.Parent = window
+
+local list = Instance.new("UIListLayout")
+list.Padding = UDim.new(0, 10)
+list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+list.Parent = scroller
+
+-- 6. PLAYER ENTRY FUNCTION
+local function createBar(p)
+    if p == Players.LocalPlayer then return end
+    local f = Instance.new("Frame")
+    f.Size = UDim2.new(0, 470, 0, 90)
+    f.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    f.Parent = scroller
+    Instance.new("UICorner", f)
+
+    local icon = Instance.new("ImageLabel")
+    icon.Size = UDim2.new(0, 65, 0, 65)
+    icon.Position = UDim2.new(0, 12, 0.5, -32)
+    task.spawn(function()
+        icon.Image = Players:GetUserThumbnailAsync(p.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+    end)
+    icon.Parent = f
+    Instance.new("UICorner", icon).CornerRadius = UDim.new(1, 0)
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(0, 180, 0, 25)
+    nameLabel.Position = UDim2.new(0, 90, 0.15, 0)
+    nameLabel.Text = p.DisplayName
+    nameLabel.TextColor3 = Color3.new(1, 1, 1)
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 16
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Parent = f
+
+    local function btn(txt, pos, color)
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(0, 100, 0, 35)
+        b.Position = pos
+        b.Text = txt
+        b.BackgroundColor3 = color
+        b.TextColor3 = Color3.new(1, 1, 1)
+        b.Font = Enum.Font.GothamBold
+        b.TextSize = 16
+        b.Parent = f
+        Instance.new("UICorner", b)
+        return b
+    end
+
+    local k = btn("Kick", UDim2.new(0, 90, 0.55, 0), Color3.fromRGB(180, 40, 40))
+    local v = btn("View", UDim2.new(0, 200, 0.55, 0), Color3.fromRGB(40, 140, 40))
+    local t = btn("Teleport", UDim2.new(0, 310, 0.55, 0), Color3.fromRGB(40, 40, 180))
+
+    k.MouseButton1Click:Connect(function()
+        if p.UserId ~= gameOwnerId then
+            pcall(function() if kickRemote then kickRemote:FireServer(p) end end)
+            p:Kick("Venux System")
+            f:Destroy()
+        end
+    end)
+
+    t.MouseButton1Click:Connect(function()
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            Players.LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame
+        end
+    end)
+
+    local viewActive = false
+    v.MouseButton1Click:Connect(function()
+        viewActive = not viewActive
+        workspace.CurrentCamera.CameraSubject = viewActive and p.Character:FindFirstChild("Humanoid") or Players.LocalPlayer.Character.Humanoid
+        v.Text = viewActive and "Unview" or "View"
+    end)
+end
+
+-- 7. REFRESH & EVENTS
+local function refresh()
+    for _, v in pairs(scroller:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end
+    for _, p in pairs(Players:GetPlayers()) do createBar(p) end
+    scroller.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y + 20)
+end
+
+mainBtn.MouseButton1Click:Connect(function()
+    window.Visible = not window.Visible
+    if window.Visible then refresh() end
+end)
+
+Players.PlayerAdded:Connect(refresh)
+Players.PlayerRemoving:Connect(refresh)
+
+end) -- Dont delete this
+
+AddButton("Fly Gui - With Noclip -", function()
+	local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local TextChatService = game:GetService("TextChatService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- === OWNER VERIFY ===
+local OWNER_ID = 5053082018 
+
+-- === PRIVÁTNÍ BOT (POUZE EXECUTE) ===
+local function botReply(message)
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		local channel = TextChatService:FindFirstChild("RBXGeneral", true)
+		if channel then channel:DisplaySystemMessage("<font color='#00E5FF'><b>[Bot]:</b></font> " .. message) end
+	else
+		game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {Text = "[Bot]: "..message; Color = Color3.fromRGB(0, 229, 255); Font = Enum.Font.GothamBold;})
+	end
+end
+
+-- === HLAVNÍ PROMĚNNÉ ===
+local flying = false
+local noclip = false
+local currentVel = Vector3.zero
+local flySpeed = 85
+local bv, bg
+
+-- === FUNKCE PRO ÚKLID (KILL) ===
+local function killEverything(gui)
+	flying = false
+	noclip = false
+	-- Reset fyziky
+	if bv then bv:Destroy() end
+	if bg then bg:Destroy() end
+	local char = player.Character
+	if char then
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then 
+			hum.PlatformStand = false 
+			hum:ChangeState(Enum.HumanoidStateType.Running)
+		end
+		-- Reset kolizí (Noclip OFF)
+		for _, part in pairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = true end
+		end
+	end
+	gui:Destroy()
+end
+
+-- === GUI CREATION ===
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "UltimateOwnerSystem"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 260, 0, 320)
+main.Position = UDim2.new(0.5, -130, 0.4, 0)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+main.BackgroundTransparency = 0.1
+main.Active = true
+main.Draggable = true
+main.Parent = screenGui
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 15)
+
+local stroke = Instance.new("UIStroke", main)
+stroke.Thickness = 3
+task.spawn(function()
+	while task.wait() do stroke.Color = Color3.fromHSV(tick() % 5 / 5, 0.8, 1) end
+end)
+
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, 0, 1, 0)
+content.BackgroundTransparency = 1
+content.Parent = main
+
+-- SPEED INPUT
+local speedInput = Instance.new("TextBox")
+speedInput.Size = UDim2.new(0, 220, 0, 100)
+speedInput.Position = UDim2.new(0.5, -110, 0, 45)
+speedInput.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+speedInput.PlaceholderText = "Speed Number"
+speedInput.Text = "85"
+speedInput.TextColor3 = Color3.new(1, 1, 1)
+speedInput.TextSize = 25
+speedInput.Parent = content
+Instance.new("UICorner", speedInput)
+Instance.new("UIStroke", speedInput).Color = Color3.new(1,0,0)
+
+speedInput:GetPropertyChangedSignal("Text"):Connect(function()
+	flySpeed = tonumber(speedInput.Text) or 85
+end)
+
+-- TLAČÍTKA
+local flyBtn = Instance.new("TextButton")
+flyBtn.Size = UDim2.new(0, 220, 0, 45)
+flyBtn.Position = UDim2.new(0.5, -110, 0, 155)
+flyBtn.Text = "ACTIVATE FLY"
+flyBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+flyBtn.TextColor3 = Color3.new(1, 1, 1)
+flyBtn.Parent = content
+Instance.new("UICorner", flyBtn)
+
+local noclipBtn = Instance.new("TextButton")
+noclipBtn.Size = UDim2.new(0, 220, 0, 45)
+noclipBtn.Position = UDim2.new(0.5, -110, 0, 210)
+noclipBtn.Text = "NOCLIP: OFF"
+noclipBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+noclipBtn.TextColor3 = Color3.new(1, 1, 1)
+noclipBtn.Parent = content
+Instance.new("UICorner", noclipBtn)
+
+local updateBtn = Instance.new("TextButton")
+updateBtn.Size = UDim2.new(0, 220, 0, 45)
+updateBtn.Position = UDim2.new(0.5, -110, 0, 265)
+updateBtn.Text = "UPDATES"
+updateBtn.BackgroundColor3 = Color3.fromRGB(0, 110, 220)
+updateBtn.TextColor3 = Color3.new(1, 1, 1)
+updateBtn.Parent = content
+Instance.new("UICorner", updateBtn)
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Text = "X"
+closeBtn.Size = UDim2.new(0, 35, 0, 35)
+closeBtn.Position = UDim2.new(1, -40, 0, 5)
+closeBtn.BackgroundTransparency = 1
+closeBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 30
+closeBtn.Parent = main
+
+-- === UPDATES PANEL ===
+local updatesFrame = Instance.new("Frame")
+updatesFrame.Size = UDim2.new(0, 200, 0, 150)
+updatesFrame.Position = UDim2.new(1, 10, 0, 0)
+updatesFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+updatesFrame.Visible = false
+updatesFrame.Parent = main
+Instance.new("UICorner", updatesFrame)
+Instance.new("UIStroke", updatesFrame).Color = Color3.fromRGB(0, 110, 220)
+
+local updatesText = Instance.new("TextLabel")
+updatesText.Size = UDim2.new(1, -10, 1, -10)
+updatesText.Position = UDim2.new(0, 5, 0, 5)
+updatesText.Text = "--- UPDATES ---\n- Fixed Kill Script\n- Fixed Update Button\n- Kill resets Fly/Noclip\n- New Warning Text"
+updatesText.TextColor3 = Color3.new(1, 1, 1)
+updatesText.TextWrapped = true
+updatesText.BackgroundTransparency = 1
+updatesText.Font = Enum.Font.Gotham
+updatesText.Parent = updatesFrame
+
+updateBtn.MouseButton1Click:Connect(function() updatesFrame.Visible = not updatesFrame.Visible end)
+
+-- === KILL WARNING GUI ===
+local killFrame = Instance.new("Frame")
+killFrame.Size = UDim2.new(1, 0, 1, 0)
+killFrame.BackgroundColor3 = Color3.fromRGB(25, 0, 0)
+killFrame.BackgroundTransparency = 0.1
+killFrame.Visible = false
+killFrame.Parent = main
+Instance.new("UICorner", killFrame).CornerRadius = UDim.new(0, 15)
+
+local killLabel = Instance.new("TextLabel")
+killLabel.Size = UDim2.new(1, 0, 0.4, 0)
+killLabel.Position = UDim2.new(0, 0, 0.2, 0)
+killLabel.Text = "Wanna Kill this gui?" -- Tvůj požadovaný text
+killLabel.TextColor3 = Color3.new(1, 1, 1)
+killLabel.BackgroundTransparency = 1
+killLabel.Font = Enum.Font.GothamBold
+killLabel.TextSize = 20
+killLabel.Parent = killFrame
+
+local yesBtn = Instance.new("TextButton") -- GREEN
+yesBtn.Size = UDim2.new(0, 90, 0, 45)
+yesBtn.Position = UDim2.new(0.15, 0, 0.65, 0)
+yesBtn.Text = "Yes"
+yesBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+yesBtn.TextColor3 = Color3.new(1, 1, 1)
+yesBtn.Parent = killFrame
+Instance.new("UICorner", yesBtn)
+
+local noBtn = Instance.new("TextButton") -- RED
+noBtn.Size = UDim2.new(0, 90, 0, 45)
+noBtn.Position = UDim2.new(0.5, 0, 0.65, 0)
+noBtn.Text = "No"
+noBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+noBtn.TextColor3 = Color3.new(1, 1, 1)
+noBtn.Parent = killFrame
+Instance.new("UICorner", noBtn)
+
+closeBtn.MouseButton1Click:Connect(function()
+	content.Visible = false
+	closeBtn.Visible = false
+	updatesFrame.Visible = false
+	killFrame.Visible = true
+end)
+
+noBtn.MouseButton1Click:Connect(function()
+	killFrame.Visible = false
+	content.Visible = true
+	closeBtn.Visible = true
+end)
+
+yesBtn.MouseButton1Click:Connect(function()
+	killEverything(screenGui) -- Vypne Fly, Noclip a smaže GUI
+end)
+
+-- === FLY LOGIC ===
+local function toggleFly()
+	flying = not flying
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	
+	if flying and hrp and hum then
+		flyBtn.Text = "FLY: ACTIVE"
+		hum.PlatformStand = true
+		hrp.AssemblyLinearVelocity = Vector3.zero
+		
+		bv = Instance.new("BodyVelocity", hrp)
+		bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+		bg = Instance.new("BodyGyro", hrp)
+		bg.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+		
+		task.spawn(function()
+			while flying do
+				local isTyping = UserInputService:GetFocusedTextBox() ~= nil
+				local moveDir = Vector3.zero
+				if not isTyping then
+					if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir += camera.CFrame.LookVector end
+					if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir -= camera.CFrame.LookVector end
+					if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir -= camera.CFrame.RightVector end
+					if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += camera.CFrame.RightVector end
+					if UserInputService:IsKeyDown(Enum.KeyCode.E) then moveDir += Vector3.new(0, 1, 0) end
+					if UserInputService:IsKeyDown(Enum.KeyCode.Q) then moveDir -= Vector3.new(0, 1, 0) end
+				end
+				currentVel = currentVel:Lerp(moveDir * flySpeed, 0.12)
+				bv.Velocity = currentVel
+				bg.CFrame = camera.CFrame
+				local animator = hum:FindFirstChildOfClass("Animator")
+				if animator then for _, t in pairs(animator:GetPlayingAnimationTracks()) do t:Stop(0.1) end end
+				RunService.RenderStepped:Wait()
+			end
+		end)
+	else
+		flying = false
+		flyBtn.Text = "ACTIVATE FLY"
+		if bv then bv:Destroy() end
+		if bg then bg:Destroy() end
+		if hum then 
+			hum.PlatformStand = false 
+			hum:ChangeState(Enum.HumanoidStateType.Running)
+		end
+	end
+end
+
+flyBtn.MouseButton1Click:Connect(toggleFly)
+
+-- === NOCLIP LOGIC ===
+RunService.Stepped:Connect(function()
+	if noclip and player.Character then
+		for _, part in pairs(player.Character:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = false end
+		end
+	end
+end)
+
+noclipBtn.MouseButton1Click:Connect(function()
+	noclip = not noclip
+	noclipBtn.Text = noclip and "NOCLIP: ON" or "NOCLIP: OFF"
+	if not noclip and player.Character then
+		for _, part in pairs(player.Character:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = true end
+		end
+	end
+end)
+
+-- INITIAL BOT MESSAGE
+task.spawn(function()
+	task.wait(0.5)
+	if player.UserId == OWNER_ID then botReply("Hi welcome Owner.]")
+	else botReply("Hi player ["..player.Name.."] welcome To my Fly gui. we hope you like it.") end
+end)
+
+end) -- Dont delete this
+
+AddButton("coming up - MM2 Powerfull hub 0x0x01", function()
+print("mm2 Powerhub Will coming at 20.6.2026 sorry but it will take To long untill i Think abt it!")
+end) -- Dont delete this
+
+AddButton("0x0x01 Fly Gui V3", function()
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+local runService = game:GetService("RunService")
+
+if game.CoreGui:FindFirstChild("0x0x01_V3_Fixed") then
+    game.CoreGui["0x0x01_V3_Fixed"]:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "0x0x01_V3_Fixed"
+ScreenGui.Parent = game.CoreGui
+
+-- GUI PANEL (Dark Aggressive)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 300, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -190)
+MainFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+MainFrame.BorderSizePixel = 3
+MainFrame.BorderColor3 = Color3.new(0.6, 0, 0)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 60)
+Title.Text = "0x0x01 FLY V3"
+Title.TextColor3 = Color3.new(0.8, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 30
+Title.Parent = MainFrame
+
+-- Tlačítka X a -
+local KillBtn = Instance.new("TextButton")
+KillBtn.Size = UDim2.new(0, 30, 0, 30)
+KillBtn.Position = UDim2.new(1, -35, 0, 5)
+KillBtn.Text = "X"
+KillBtn.BackgroundColor3 = Color3.new(0.4, 0, 0)
+KillBtn.TextColor3 = Color3.new(1, 1, 1)
+KillBtn.Parent = MainFrame
+
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 30, 0, 30)
+MinBtn.Position = UDim2.new(1, -70, 0, 5)
+MinBtn.Text = "-"
+MinBtn.BackgroundColor3 = Color3.new(0.2, 0, 0)
+MinBtn.TextColor3 = Color3.new(1, 1, 1)
+MinBtn.Parent = MainFrame
+
+local Content = Instance.new("Frame")
+Content.Size = UDim2.new(1, 0, 1, -60)
+Content.Position = UDim2.new(0, 0, 0, 60)
+Content.BackgroundTransparency = 1
+Content.Parent = MainFrame
+
+local FlyBtn = Instance.new("TextButton")
+FlyBtn.Size = UDim2.new(0.8, 0, 0, 55)
+FlyBtn.Position = UDim2.new(0.1, 0, 0.1, 0)
+FlyBtn.Text = "ACTIVATE FLY"
+FlyBtn.BackgroundColor3 = Color3.new(0.15, 0, 0)
+FlyBtn.TextColor3 = Color3.new(1, 0, 0)
+FlyBtn.Font = Enum.Font.SourceSansBold
+FlyBtn.TextSize = 22
+FlyBtn.Parent = Content
+
+local NoclipBtn = Instance.new("TextButton")
+NoclipBtn.Size = UDim2.new(0.8, 0, 0, 55)
+NoclipBtn.Position = UDim2.new(0.1, 0, 0.4, 0)
+NoclipBtn.Text = "NOCLIP: OFF"
+NoclipBtn.BackgroundColor3 = Color3.new(0.15, 0, 0)
+NoclipBtn.TextColor3 = Color3.new(1, 0, 0)
+NoclipBtn.Font = Enum.Font.SourceSansBold
+NoclipBtn.TextSize = 22
+NoclipBtn.Parent = Content
+
+local SpeedInput = Instance.new("TextBox")
+SpeedInput.Size = UDim2.new(0.8, 0, 0, 55)
+SpeedInput.Position = UDim2.new(0.1, 0, 0.7, 0)
+SpeedInput.Text = "50"
+SpeedInput.BackgroundColor3 = Color3.new(0.05, 0, 0)
+SpeedInput.TextColor3 = Color3.new(1, 0, 0)
+SpeedInput.Font = Enum.Font.SourceSansBold
+SpeedInput.TextSize = 24
+SpeedInput.Parent = Content
+
+--------------------------------------------------
+-- OPRAVENÁ LOGIKA (Fly & Noclip)
+--------------------------------------------------
+
+local flying = false
+local noclip = false
+local ctrl = {f = 0, b = 0, l = 0, r = 0, q = 0, e = 0}
+local currentVel = Vector3.new(0,0,0)
+
+-- Funkce pro natvrdo zapnutí kolizí
+local function forceCollisions()
+    if player.Character then
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+-- FLY TOGGLE
+FlyBtn.MouseButton1Click:Connect(function()
+    flying = not flying
+    FlyBtn.Text = flying and "FLYING..." or "ACTIVATE FLY"
+    FlyBtn.BackgroundColor3 = flying and Color3.new(0.4, 0, 0) or Color3.new(0.15, 0, 0)
+    
+    if flying then
+        local char = player.Character
+        if not char then return end
+        local root = char:WaitForChild("HumanoidRootPart")
+        local bv = Instance.new("BodyVelocity", root)
+        local bg = Instance.new("BodyGyro", root)
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+
+        task.spawn(function()
+            while flying do
+                runService.RenderStepped:Wait()
+                char.Humanoid.PlatformStand = true
+                local s = tonumber(SpeedInput.Text) or 50
+                local cam = workspace.CurrentCamera.CFrame
+                local move = cam.LookVector * (ctrl.f + ctrl.b) + cam.RightVector * (ctrl.l + ctrl.r) + Vector3.new(0, ctrl.q + ctrl.e, 0)
+                
+                if move.Magnitude > 0 then currentVel = move.Unit * s else currentVel = currentVel * 0.9 end
+                bv.Velocity = currentVel
+                bg.CFrame = cam
+            end
+            bv:Destroy() bg:Destroy()
+            char.Humanoid.PlatformStand = false
+        end)
+    end
+end)
+
+-- NOCLIP TOGGLE (FIXED)
+NoclipBtn.MouseButton1Click:Connect(function()
+    noclip = not noclip
+    NoclipBtn.Text = noclip and "NOCLIP: ON" or "NOCLIP: OFF"
+    NoclipBtn.BackgroundColor3 = noclip and Color3.new(0.4, 0, 0) or Color3.new(0.15, 0, 0)
+    
+    if not noclip then
+        forceCollisions() -- Okamžitý reset při vypnutí
+    end
+end)
+
+-- SMYČKA NOCLIPU (Běží jen když je aktivní)
+runService.Stepped:Connect(function()
+    if noclip and player.Character then
+        for _, v in pairs(player.Character:GetDescendants()) do
+            if v:IsA("BasePart") then 
+                v.CanCollide = false 
+            end
+        end
+    end
+end)
+
+-- Klavesy & UI Management
+KillBtn.MouseButton1Click:Connect(function() flying = false noclip = false forceCollisions() ScreenGui:Destroy() end)
+MinBtn.MouseButton1Click:Connect(function() Content.Visible = not Content.Visible MainFrame.Size = Content.Visible and UDim2.new(0, 300, 0, 380) or UDim2.new(0, 300, 0, 60) end)
+
+mouse.KeyDown:Connect(function(k) local key = k:lower() if key == "w" then ctrl.f = 1 elseif key == "s" then ctrl.b = -1 elseif key == "a" then ctrl.l = -1 elseif key == "d" then ctrl.r = 1 elseif key == "e" then ctrl.e = 1 elseif key == "q" then ctrl.q = -1 end end)
+mouse.KeyUp:Connect(function(k) local key = k:lower() if key == "w" then ctrl.f = 0 elseif key == "s" then ctrl.b = 0 elseif key == "a" then ctrl.l = 0 elseif key == "d" then ctrl.r = 0 elseif key == "e" then ctrl.e = 0 elseif key == "q" then ctrl.q = 0 end end)
+
+end) -- Dont delete this
+
+AddButton("Ultimate FLing Gui", function()
+	--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+loadstring(game:HttpGet("https://raw.githubusercontent.com/K1LAS1K/Ultimate-Fling-GUI/main/flingscript.lua"))()
+end) -- Dont delete this
+
+AddButton("op MM2 Hub Honey [not me] ", function()
+	--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
+end) -- Dont delete this
+
+AddButton("0x0x01 Executor Not Op.", function()
+	
+
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+-- 1. ZÁKLADNÍ OBJEKTY
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local MatrixContainer = Instance.new("Frame")
+local TitleBar = Instance.new("Frame")
+local GlitchTitle = Instance.new("TextLabel")
+local Editor = Instance.new("TextBox")
+local ExecuteBtn = Instance.new("TextButton")
+local ClearBtn = Instance.new("TextButton")
+local KillBtn = Instance.new("TextButton")
+local MinBtn = Instance.new("TextButton")
+
+-- 2. SETUP SCREEN
+ScreenGui.Name = "0x0x01_Red_Ultimate"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- HLAVNÍ RÁM (800x600)
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+MainFrame.Position = UDim2.new(0.5, -400, 0.5, -300)
+MainFrame.Size = UDim2.new(0, 800, 0, 600)
+MainFrame.Active = true
+MainFrame.ClipsDescendants = true
+
+MatrixContainer.Size = UDim2.new(1, 0, 1, 0)
+MatrixContainer.BackgroundTransparency = 1
+MatrixContainer.Parent = MainFrame
+MatrixContainer.ZIndex = 1
+
+TitleBar.Name = "TitleBar"
+TitleBar.Parent = MainFrame
+TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+TitleBar.Size = UDim2.new(1, 0, 0, 45)
+TitleBar.ZIndex = 5
+
+GlitchTitle.Parent = TitleBar
+GlitchTitle.BackgroundTransparency = 1
+GlitchTitle.Position = UDim2.new(0, 15, 0, 0)
+GlitchTitle.Size = UDim2.new(0, 400, 1, 0)
+GlitchTitle.Text = "0x0x01 Red // hacking bitch"
+GlitchTitle.TextColor3 = Color3.fromRGB(255, 0, 0)
+GlitchTitle.TextSize = 22
+GlitchTitle.Font = Enum.Font.Code
+GlitchTitle.TextXAlignment = Enum.TextXAlignment.Left
+GlitchTitle.ZIndex = 6
+
+-- 3. TLAČÍTKA V LIŠTĚ (X a -)
+KillBtn.Name = "KillBtn"
+KillBtn.Parent = TitleBar
+KillBtn.Text = "X"
+KillBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+KillBtn.TextColor3 = Color3.new(1, 1, 1)
+KillBtn.Position = UDim2.new(1, -40, 0, 5)
+KillBtn.Size = UDim2.new(0, 35, 0, 35)
+KillBtn.Font = Enum.Font.SourceSansBold
+KillBtn.TextSize = 20
+KillBtn.ZIndex = 10
+
+MinBtn.Name = "MinBtn"
+MinBtn.Parent = TitleBar
+MinBtn.Text = "-"
+MinBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+MinBtn.TextColor3 = Color3.new(1, 1, 1)
+MinBtn.Position = UDim2.new(1, -80, 0, 5)
+MinBtn.Size = UDim2.new(0, 35, 0, 35)
+MinBtn.Font = Enum.Font.SourceSansBold
+MinBtn.TextSize = 25
+MinBtn.ZIndex = 10
+
+-- 4. EDITOR A SPODNÍ TLAČÍTKA
+Editor.Parent = MainFrame
+Editor.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+Editor.Position = UDim2.new(0, 15, 0, 60)
+Editor.Size = UDim2.new(0, 770, 0, 455)
+Editor.Text = "-- 0x0x01 Red Ready\nprint('Hello Matrix')"
+Editor.TextColor3 = Color3.fromRGB(255, 50, 50)
+Editor.TextSize = 16
+Editor.Font = Enum.Font.Code
+Editor.MultiLine, Editor.TextWrapped = true, true
+Editor.ZIndex = 4
+
+ExecuteBtn.Parent = MainFrame
+ExecuteBtn.Text = "EXECUTE"
+ExecuteBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
+ExecuteBtn.Position = UDim2.new(0, 15, 0, 530)
+ExecuteBtn.Size = UDim2.new(0, 377, 0, 55)
+ExecuteBtn.TextColor3 = Color3.new(1, 1, 1)
+ExecuteBtn.Font = Enum.Font.SourceSansBold
+ExecuteBtn.ZIndex = 5
+
+ClearBtn.Parent = MainFrame
+ClearBtn.Text = "CLEAR"
+ClearBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ClearBtn.Position = UDim2.new(0, 407, 0, 530)
+ClearBtn.Size = UDim2.new(0, 377, 0, 55)
+ClearBtn.TextColor3 = Color3.new(1, 1, 1)
+ClearBtn.Font = Enum.Font.SourceSansBold
+ClearBtn.ZIndex = 5
+
+-- 5. LOGIKA: SMOOTH DRAG & CURSOR
+local dragging, dragStart, startPos
+local GRAB_CURSOR = "rbxassetid://15286520138"
+
+TitleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = MainFrame.Position
+		UserInputService.MouseIcon = GRAB_CURSOR
+		TweenService:Create(MainFrame, TweenInfo.new(0.2), {BackgroundTransparency = 0.3}):Play()
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+		UserInputService.MouseIcon = ""
+		TweenService:Create(MainFrame, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		TweenService:Create(MainFrame, TweenInfo.new(0.12, Enum.EasingStyle.Quart), {
+			Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		}):Play()
+	end
+end)
+
+-- 6. LOGIKA TLAČÍTEK (ZAVŘÍT A MINIMALIZOVAT)
+KillBtn.MouseButton1Click:Connect(function()
+	MainFrame:TweenSize(UDim2.new(0,0,0,0), "In", "Back", 0.3, true, function() ScreenGui:Destroy() end)
+end)
+
+local minimized = false
+MinBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	Editor.Visible = not minimized
+	ExecuteBtn.Visible = not minimized
+	ClearBtn.Visible = not minimized
+	MainFrame:TweenSize(minimized and UDim2.new(0, 800, 0, 45) or UDim2.new(0, 800, 0, 600), "Out", "Quart", 0.3, true)
+end)
+
+-- 7. MATRIX DÉŠŤ
+local chars = {"#", "đ", "|", "&", "Đ", "€", "@", "[", "{", "]", "}", "ł", "Ł", "÷", "×", "$", "ß", "¤", "<", ">", "*"}
+task.spawn(function()
+	while task.wait(0.05) do
+		local xPos = math.random(0, 1000)/1000
+		local label = Instance.new("TextLabel", MatrixContainer)
+		label.BackgroundTransparency, label.Position = 1, UDim2.new(xPos, 0, -0.1, 0)
+		label.Text, label.TextColor3 = chars[math.random(1, #chars)], Color3.fromRGB(150, 0, 0)
+		label.TextSize, label.Font = math.random(12, 20), Enum.Font.Code
+		label:TweenPosition(UDim2.new(xPos, 0, 1.1, 0), "In", "Linear", math.random(2, 4), true, function() label:Destroy() end)
+	end
+end)
+
+-- OSTATNÍ FUNKCE
+ExecuteBtn.MouseButton1Click:Connect(function() pcall(function() loadstring(Editor.Text)() end) end)
+ClearBtn.MouseButton1Click:Connect(function() Editor.Text = "" end)
+
+-- INTRO (Otevření)
+MainFrame:TweenSize(UDim2.new(0, 800, 0, 600), "Out", "Back", 0.5, true)
+
+end) -- Dont delete this
+
+AddButton("0x0x01 BangGui", function()
+	local players = game:GetService("Players")
+local runService = game:GetService("RunService")
+local lp = players.LocalPlayer
+
+-- --- GUI DESIGN (ResetOnSpawn = false) ---
+local screenGui = Instance.new("ScreenGui", lp.PlayerGui)
+screenGui.Name = "EliteBangSystemPersistent"
+screenGui.ResetOnSpawn = false -- GUI zůstane i po resetu postavy
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 250, 0, 360)
+frame.Position = UDim2.new(0.5, -125, 0.5, -180)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BorderSizePixel = 2
+frame.BorderColor3 = Color3.fromRGB(139, 0, 0)
+frame.Active = true
+frame.Draggable = true
+
+-- Title Bar
+local titleBar = Instance.new("Frame", frame)
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+titleBar.BorderSizePixel = 0
+
+local titleText = Instance.new("TextLabel", titleBar)
+titleText.Text = " ELITE BANG SYSTEM"
+titleText.Size = UDim2.new(1, -30, 1, 0)
+titleText.TextColor3 = Color3.new(1, 1, 1)
+titleText.BackgroundTransparency = 1
+titleText.Font = Enum.Font.GothamBold
+titleText.TextSize = 15
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+
+local closeBtn = Instance.new("TextButton", titleBar)
+closeBtn.Text = "X"
+closeBtn.Size = UDim2.new(0, 30, 1, 0)
+closeBtn.Position = UDim2.new(1, -30, 0, 0)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.BorderSizePixel = 0
+closeBtn.TextSize = 15
+
+-- Inputs
+local function createInput(placeholder, pos)
+	local box = Instance.new("TextBox", frame)
+	box.Size = UDim2.new(0.9, 0, 0, 35)
+	box.Position = pos
+	box.PlaceholderText = placeholder
+	box.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	box.TextColor3 = Color3.new(1, 1, 1)
+	box.BorderColor3 = Color3.fromRGB(139, 0, 0)
+	box.Font = Enum.Font.Code
+	box.TextSize = 15
+	return box
+end
+
+local targetInput = createInput("Display or Username", UDim2.new(0.05, 0, 0.12, 0))
+local speedInput = createInput("Bang Speed (1-50)", UDim2.new(0.05, 0, 0.25, 0))
+
+-- Buttons
+local function createBtn(text, pos, color)
+	local btn = Instance.new("TextButton", frame)
+	btn.Text = text
+	btn.Size = UDim2.new(0.9, 0, 0, 40)
+	btn.Position = pos
+	btn.BackgroundColor3 = color
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.BorderSizePixel = 0
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 15
+	return btn
+end
+
+local backBtn = createBtn("BACK BANG", UDim2.new(0.05, 0, 0.42, 0), Color3.fromRGB(60, 0, 0))
+local frontBtn = createBtn("FRONT BANG", UDim2.new(0.05, 0, 0.54, 0), Color3.fromRGB(60, 0, 0))
+local headBtn = createBtn("HEAD BANG", UDim2.new(0.05, 0, 0.66, 0), Color3.fromRGB(100, 0, 0))
+local stopBtn = createBtn("STOP SYSTEM", UDim2.new(0.05, 0, 0.82, 0), Color3.fromRGB(255, 0, 0))
+
+-- --- LOGIC ---
+local active = false
+local connection
+
+local function findTarget(name)
+	name = name:lower()
+	for _, p in pairs(players:GetPlayers()) do
+		if p ~= lp then
+			if p.Name:lower():sub(1, #name) == name or p.DisplayName:lower():sub(1, #name) == name then
+				return p
+			end
+		end
+	end
+	return nil
+end
+
+local function runBang(mode)
+	if connection then connection:Disconnect() end
+	active = false
+	
+	local targetPlayer = findTarget(targetInput.Text)
+	local speed = tonumber(speedInput.Text) or 20
+	
+	-- Počkej na novou postavu po resetu
+	local character = lp.Character or lp.CharacterAdded:Wait()
+	local hrp = character:WaitForChild("HumanoidRootPart")
+	
+	if targetPlayer and targetPlayer.Character then
+		active = true
+		local tHrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+		
+		connection = runService.Heartbeat:Connect(function()
+			if not active or not tHrp or not tHrp.Parent or not hrp.Parent then
+				if connection then connection:Disconnect() end
+				return
+			end
+			
+			local move = math.sin(tick() * speed) * 1.2
+			local offset
+			
+			if mode == "back" then
+				offset = CFrame.new(0, 0, 2.2 + move)
+			elseif mode == "front" then
+				offset = CFrame.new(0, 0, -2.2 - move)
+			elseif mode == "head" then
+				offset = CFrame.new(0, 2.0, -0.8 - move) * CFrame.Angles(0, math.rad(180), 0)
+			end
+			
+			hrp.CFrame = tHrp.CFrame * offset
+		end)
+	end
+end
+
+-- Events
+backBtn.MouseButton1Click:Connect(function() runBang("back") end)
+frontBtn.MouseButton1Click:Connect(function() runBang("front") end)
+headBtn.MouseButton1Click:Connect(function() runBang("head") end)
+stopBtn.MouseButton1Click:Connect(function() active = false if connection then connection:Disconnect() end end)
+closeBtn.MouseButton1Click:Connect(function() active = false if connection then connection:Disconnect() end screenGui:Destroy() end)
+
+end) -- Dont delete this
+
+AddButton("7yd7 -emotes,animations", function()
+	--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+loadstring(game:HttpGet("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/Branch/GUIS/Emotes.lua"))()
+end) -- Dont delete thiss
+
+-- ====================================================================================================
+
