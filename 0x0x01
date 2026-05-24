@@ -2019,6 +2019,728 @@ AddButton("7yd7 -emotes,animations", function()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/Branch/GUIS/Emotes.lua"))()
 end) -- Dont delete thiss
 
+AddButton("0x0x01 Pos Teleporter ", function() 
+     --// 0x0x01 Pose Teleporter
+--// Ultimate Purple Animated Edition
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Debris = game:GetService("Debris")
+
+local player = Players.LocalPlayer
+
+---------------------------------------------------
+-- GUI
+---------------------------------------------------
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "0x0x01PoseTeleporter"
+gui.Parent = game.CoreGui
+gui.ResetOnSpawn = false
+
+---------------------------------------------------
+-- MAIN FRAME
+---------------------------------------------------
+
+local frame = Instance.new("Frame")
+frame.Parent = gui
+frame.Size = UDim2.new(0,700,0,600)
+frame.Position = UDim2.new(0.5,-350,0.5,-300)
+frame.BackgroundColor3 = Color3.fromRGB(18,10,30)
+frame.BorderSizePixel = 0
+frame.Active = true
+
+---------------------------------------------------
+-- TOPBAR
+---------------------------------------------------
+
+local topbar = Instance.new("Frame")
+topbar.Parent = frame
+topbar.Size = UDim2.new(1,0,0,50)
+topbar.BackgroundColor3 = Color3.fromRGB(70,0,110)
+topbar.BorderSizePixel = 0
+
+---------------------------------------------------
+-- DRAGGABLE SYSTEM
+---------------------------------------------------
+
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+topbar.InputBegan:Connect(function(input)
+
+	if input.UserInputType ==
+		Enum.UserInputType.MouseButton1 then
+
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+
+		input.Changed:Connect(function()
+
+			if input.UserInputState ==
+				Enum.UserInputState.End then
+
+				dragging = false
+
+			end
+
+		end)
+
+	end
+
+end)
+
+topbar.InputChanged:Connect(function(input)
+
+	if input.UserInputType ==
+		Enum.UserInputType.MouseMovement then
+
+		dragInput = input
+
+	end
+
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+
+	if input == dragInput and dragging then
+
+		local delta =
+			input.Position - dragStart
+
+		frame.Position =
+			UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+
+	end
+
+end)
+
+---------------------------------------------------
+-- RESIZE CORNER
+---------------------------------------------------
+
+local resizeCorner = Instance.new("Frame")
+resizeCorner.Parent = frame
+resizeCorner.Size = UDim2.new(0,22,0,22)
+resizeCorner.Position = UDim2.new(1,-22,1,-22)
+resizeCorner.BackgroundColor3 =
+	Color3.fromRGB(180,0,255)
+resizeCorner.BorderSizePixel = 0
+
+local resizeDragging = false
+local resizeStart
+local startSize
+
+resizeCorner.InputBegan:Connect(function(input)
+
+	if input.UserInputType ==
+		Enum.UserInputType.MouseButton1 then
+
+		resizeDragging = true
+		resizeStart = input.Position
+		startSize = frame.Size
+
+		input.Changed:Connect(function()
+
+			if input.UserInputState ==
+				Enum.UserInputState.End then
+
+				resizeDragging = false
+
+			end
+
+		end)
+
+	end
+
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+
+	if resizeDragging and
+		input.UserInputType ==
+		Enum.UserInputType.MouseMovement then
+
+		local delta =
+			input.Position - resizeStart
+
+		local newX =
+			math.clamp(
+				startSize.X.Offset + delta.X,
+				500,
+				1200
+			)
+
+		local newY =
+			math.clamp(
+				startSize.Y.Offset + delta.Y,
+				350,
+				900
+			)
+
+		frame.Size =
+			UDim2.new(
+				0,
+				newX,
+				0,
+				newY
+			)
+
+	end
+
+end)
+
+---------------------------------------------------
+-- TITLE
+---------------------------------------------------
+
+local title = Instance.new("TextLabel")
+title.Parent = topbar
+title.Size = UDim2.new(1,-100,1,0)
+title.Position = UDim2.new(0,10,0,0)
+title.BackgroundTransparency = 1
+title.Text = "0x0x01 Pose Teleporter"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.Code
+title.TextSize = 24
+title.TextXAlignment =
+	Enum.TextXAlignment.Left
+
+---------------------------------------------------
+-- MINIMIZE
+---------------------------------------------------
+
+local mini = Instance.new("TextButton")
+mini.Parent = topbar
+mini.Size = UDim2.new(0,40,0,40)
+mini.Position = UDim2.new(1,-90,0,5)
+mini.BackgroundColor3 =
+	Color3.fromRGB(120,0,180)
+mini.BorderSizePixel = 0
+mini.Text = "-"
+mini.TextColor3 = Color3.new(1,1,1)
+mini.Font = Enum.Font.Code
+mini.TextSize = 24
+
+---------------------------------------------------
+-- CLOSE
+---------------------------------------------------
+
+local close = Instance.new("TextButton")
+close.Parent = topbar
+close.Size = UDim2.new(0,40,0,40)
+close.Position = UDim2.new(1,-45,0,5)
+close.BackgroundColor3 =
+	Color3.fromRGB(180,0,255)
+close.BorderSizePixel = 0
+close.Text = "X"
+close.TextColor3 = Color3.new(1,1,1)
+close.Font = Enum.Font.Code
+close.TextSize = 22
+
+---------------------------------------------------
+-- NOTIFY
+---------------------------------------------------
+
+local notify = Instance.new("TextLabel")
+notify.Parent = frame
+notify.Size = UDim2.new(0,320,0,35)
+notify.Position = UDim2.new(0.5,-80,0,60)
+notify.BackgroundColor3 =
+	Color3.fromRGB(130,0,200)
+notify.BorderSizePixel = 0
+notify.TextColor3 = Color3.new(1,1,1)
+notify.Font = Enum.Font.Code
+notify.TextSize = 18
+notify.Visible = false
+
+local function Notify(text)
+
+	notify.Text = text
+	notify.Visible = true
+	notify.BackgroundTransparency = 1
+
+	TweenService:Create(
+		notify,
+		TweenInfo.new(0.25),
+		{
+			BackgroundTransparency = 0
+		}
+	):Play()
+
+	task.wait(2)
+
+	TweenService:Create(
+		notify,
+		TweenInfo.new(0.25),
+		{
+			BackgroundTransparency = 1
+		}
+	):Play()
+
+	task.wait(0.25)
+
+	notify.Visible = false
+
+end
+
+---------------------------------------------------
+-- CREATE BUTTON
+---------------------------------------------------
+
+local createPose = Instance.new("TextButton")
+createPose.Parent = frame
+createPose.Size = UDim2.new(0,220,0,40)
+createPose.Position = UDim2.new(0,20,0,60)
+createPose.BackgroundColor3 =
+	Color3.fromRGB(120,0,190)
+createPose.BorderSizePixel = 0
+createPose.Text = "Create Pose"
+createPose.TextColor3 = Color3.new(1,1,1)
+createPose.Font = Enum.Font.Code
+createPose.TextSize = 20
+
+---------------------------------------------------
+-- SCROLL
+---------------------------------------------------
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Parent = frame
+scroll.Size = UDim2.new(1,-40,1,-120)
+scroll.Position = UDim2.new(0,20,0,110)
+scroll.BackgroundColor3 =
+	Color3.fromRGB(25,15,40)
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 6
+scroll.CanvasSize = UDim2.new(0,0,0,0)
+
+local layout = Instance.new("UIListLayout")
+layout.Parent = scroll
+layout.Padding = UDim.new(0,10)
+
+layout:GetPropertyChangedSignal(
+	"AbsoluteContentSize"
+):Connect(function()
+
+	scroll.CanvasSize =
+		UDim2.new(
+			0,
+			0,
+			0,
+			layout.AbsoluteContentSize.Y + 10
+		)
+
+end)
+
+---------------------------------------------------
+-- VARIABLES
+---------------------------------------------------
+
+local minimized = false
+local poseCount = 0
+local GlowBoxes = {}
+
+---------------------------------------------------
+-- GLOW BOX
+---------------------------------------------------
+
+local function CreateGlowBox(position, poseName)
+
+	if GlowBoxes[poseName] then
+		GlowBoxes[poseName]:Destroy()
+	end
+
+	local part = Instance.new("Part")
+	part.Anchored = true
+	part.CanCollide = false
+	part.Size = Vector3.new(0.1,0.1,0.1)
+	part.Position = position
+	part.Material = Enum.Material.Neon
+	part.Color = Color3.fromRGB(180,0,255)
+	part.Transparency = 0.35
+	part.Name = poseName
+	part.Parent = workspace
+
+	local selection =
+		Instance.new("SelectionBox")
+
+	selection.Parent = part
+	selection.Adornee = part
+	selection.LineThickness = 0.05
+	selection.Color3 =
+		Color3.fromRGB(220,0,255)
+
+	TweenService:Create(
+		part,
+		TweenInfo.new(
+			1.5,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+		{
+			Size = Vector3.new(4,6,4)
+		}
+	):Play()
+
+	GlowBoxes[poseName] = part
+
+	return part
+
+end
+
+---------------------------------------------------
+-- TELEPORT ANIMATION
+---------------------------------------------------
+
+local function TeleportEffect(character, destination)
+
+	local hrp =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not hrp then return end
+
+	local startBall = Instance.new("Part")
+	startBall.Shape = Enum.PartType.Ball
+	startBall.Anchored = true
+	startBall.CanCollide = false
+	startBall.Material = Enum.Material.Neon
+	startBall.Color = Color3.fromRGB(180,0,255)
+	startBall.Size = Vector3.new(1,1,1)
+	startBall.CFrame = hrp.CFrame
+	startBall.Parent = workspace
+
+	TweenService:Create(
+		startBall,
+		TweenInfo.new(0.35),
+		{
+			Size = Vector3.new(10,10,10),
+			Transparency = 1
+		}
+	):Play()
+
+	Debris:AddItem(startBall,0.4)
+
+	for _,v in pairs(character:GetDescendants()) do
+
+		if v:IsA("BasePart") then
+
+			TweenService:Create(
+				v,
+				TweenInfo.new(0.15),
+				{
+					Transparency = 1
+				}
+			):Play()
+
+		end
+
+	end
+
+	task.wait(0.18)
+
+	hrp.CFrame = destination
+
+	local endBall = Instance.new("Part")
+	endBall.Shape = Enum.PartType.Ball
+	endBall.Anchored = true
+	endBall.CanCollide = false
+	endBall.Material = Enum.Material.Neon
+	endBall.Color = Color3.fromRGB(220,0,255)
+	endBall.Size = Vector3.new(1,1,1)
+	endBall.CFrame = hrp.CFrame
+	endBall.Parent = workspace
+
+	TweenService:Create(
+		endBall,
+		TweenInfo.new(0.4),
+		{
+			Size = Vector3.new(12,12,12),
+			Transparency = 1
+		}
+	):Play()
+
+	Debris:AddItem(endBall,0.5)
+
+	for _,v in pairs(character:GetDescendants()) do
+
+		if v:IsA("BasePart") then
+
+			TweenService:Create(
+				v,
+				TweenInfo.new(0.2),
+				{
+					Transparency = 0
+				}
+			):Play()
+
+		end
+
+	end
+
+end
+
+---------------------------------------------------
+-- CREATE POSE UI
+---------------------------------------------------
+
+local function createPoseUI(name, cf)
+
+	poseCount += 1
+
+	local poseFrame = Instance.new("Frame")
+	poseFrame.Parent = scroll
+	poseFrame.Size = UDim2.new(1,-12,0,115)
+	poseFrame.BackgroundColor3 =
+		Color3.fromRGB(45,20,70)
+	poseFrame.BorderSizePixel = 0
+
+	local poseData = {
+		CFrame = cf
+	}
+
+	local poseName = Instance.new("TextBox")
+	poseName.Parent = poseFrame
+	poseName.Size = UDim2.new(1,-20,0,35)
+	poseName.Position = UDim2.new(0,10,0,10)
+	poseName.BackgroundColor3 =
+		Color3.fromRGB(100,0,160)
+	poseName.BorderSizePixel = 0
+	poseName.Text = name
+	poseName.TextColor3 = Color3.new(1,1,1)
+	poseName.Font = Enum.Font.Code
+	poseName.TextSize = 20
+
+	local holder = Instance.new("Frame")
+	holder.Parent = poseFrame
+	holder.Size = UDim2.new(1,-20,0,40)
+	holder.Position = UDim2.new(0,10,0,70)
+	holder.BackgroundTransparency = 1
+
+	local tp = Instance.new("TextButton")
+	tp.Parent = holder
+	tp.Size = UDim2.new(0,140,0,38)
+	tp.Position = UDim2.new(0,0,0,0)
+	tp.BackgroundColor3 =
+		Color3.fromRGB(120,0,190)
+	tp.BorderSizePixel = 0
+	tp.Text = "Teleport"
+	tp.TextColor3 = Color3.new(1,1,1)
+	tp.Font = Enum.Font.Code
+	tp.TextSize = 18
+
+	local change = Instance.new("TextButton")
+	change.Parent = holder
+	change.Size = UDim2.new(0,140,0,38)
+	change.Position = UDim2.new(0,150,0,0)
+	change.BackgroundColor3 =
+		Color3.fromRGB(140,0,210)
+	change.BorderSizePixel = 0
+	change.Text = "Change"
+	change.TextColor3 = Color3.new(1,1,1)
+	change.Font = Enum.Font.Code
+	change.TextSize = 18
+
+	local hide = Instance.new("TextButton")
+	hide.Parent = holder
+	hide.Size = UDim2.new(0,120,0,38)
+	hide.Position = UDim2.new(0,300,0,0)
+	hide.BackgroundColor3 =
+		Color3.fromRGB(90,0,150)
+	hide.BorderSizePixel = 0
+	hide.Text = "Hide Box"
+	hide.TextColor3 = Color3.new(1,1,1)
+	hide.Font = Enum.Font.Code
+	hide.TextSize = 18
+
+	local deleteBtn = Instance.new("TextButton")
+	deleteBtn.Parent = holder
+	deleteBtn.Size = UDim2.new(0,120,0,38)
+	deleteBtn.Position = UDim2.new(0,430,0,0)
+	deleteBtn.BackgroundColor3 =
+		Color3.fromRGB(180,0,255)
+	deleteBtn.BorderSizePixel = 0
+	deleteBtn.Text = "Delete"
+	deleteBtn.TextColor3 = Color3.new(1,1,1)
+	deleteBtn.Font = Enum.Font.Code
+	deleteBtn.TextSize = 18
+
+	CreateGlowBox(
+		cf.Position,
+		poseName.Text
+	)
+
+	local hidden = false
+
+	tp.MouseButton1Click:Connect(function()
+
+		local character = player.Character
+
+		if character then
+
+			TeleportEffect(
+				character,
+				poseData.CFrame
+			)
+
+			Notify(
+				"Teleported To "..poseName.Text
+			)
+
+		end
+
+	end)
+
+	change.MouseButton1Click:Connect(function()
+
+		local character = player.Character
+
+		if character and
+			character:FindFirstChild(
+				"HumanoidRootPart"
+			) then
+
+			poseData.CFrame =
+				character.HumanoidRootPart.CFrame
+
+			if GlowBoxes[poseName.Text] then
+
+				GlowBoxes[poseName.Text].Position =
+					character.HumanoidRootPart.Position
+
+			end
+
+			Notify(
+				"Changed "..poseName.Text
+			)
+
+		end
+
+	end)
+
+	hide.MouseButton1Click:Connect(function()
+
+		hidden = not hidden
+
+		if GlowBoxes[poseName.Text] then
+
+			GlowBoxes[poseName.Text].Transparency =
+				hidden and 1 or 0.35
+
+			local sb =
+				GlowBoxes[poseName.Text]:
+				FindFirstChildOfClass(
+					"SelectionBox"
+				)
+
+			if sb then
+				sb.Visible = not hidden
+			end
+
+		end
+
+		hide.Text =
+			hidden and "Show Box"
+			or "Hide Box"
+
+	end)
+
+	deleteBtn.MouseButton1Click:Connect(function()
+
+		if GlowBoxes[poseName.Text] then
+
+			GlowBoxes[poseName.Text]:Destroy()
+			GlowBoxes[poseName.Text] = nil
+
+		end
+
+		poseFrame:Destroy()
+
+		Notify(
+			"Deleted "..poseName.Text
+		)
+
+	end)
+
+end
+
+---------------------------------------------------
+-- CREATE POSE
+---------------------------------------------------
+
+createPose.MouseButton1Click:Connect(function()
+
+	local character = player.Character
+
+	if not character then return end
+
+	local hrp =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not hrp then return end
+
+	createPoseUI(
+		"Pose "..(poseCount + 1),
+		hrp.CFrame
+	)
+
+	Notify(
+		"Created Pose "..(poseCount + 1)
+	)
+
+end)
+
+---------------------------------------------------
+-- MINIMIZE
+---------------------------------------------------
+
+mini.MouseButton1Click:Connect(function()
+
+	minimized = not minimized
+
+	if minimized then
+
+		scroll.Visible = false
+		createPose.Visible = false
+
+		frame.Size =
+			UDim2.new(0,700,0,50)
+
+	else
+
+		scroll.Visible = true
+		createPose.Visible = true
+
+		frame.Size =
+			UDim2.new(0,700,0,600)
+
+	end
+
+end)
+
+---------------------------------------------------
+-- CLOSE
+---------------------------------------------------
+
+close.MouseButton1Click:Connect(function()
+
+	gui:Destroy()
+
+end)
+end) -- Don't delete this --important --
+
 -- VISUALS CATEGORY
 local AddButton = createCategory("-_-[brookhaven Scripts]-_-")
 
