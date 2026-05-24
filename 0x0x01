@@ -26,7 +26,7 @@ local CHAT_BRIGHT_PURPLE = Color3.fromRGB(205, 160, 255)
 local CHAT_SLIGHT_PURPLE = Color3.fromRGB(185, 140, 235)
 
 -- ====================================================================================================
--- ⚙️ ZDE MŮŽEŠ UPRAVIT TEXT V OKNĚ UPDATE (PODPORUJE NOVÉ ŘÁDKY \n)
+--  ZDE MŮŽEŠ UPRAVIT TEXT V OKNĚ UPDATE (PODPORUJE NOVÉ ŘÁDKY \n)
 -- ====================================================================================================
 local GlobalUpdateTextString = "--- Update @ Texts: ---\n\n i Created New 0x0x01 Ui. v6 "
 
@@ -2019,5 +2019,24 @@ AddButton("7yd7 -emotes,animations", function()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/Branch/GUIS/Emotes.lua"))()
 end) -- Dont delete thiss
 
+-- VISUALS CATEGORY
+local AddButton = createCategory("-_-[brookhaven Scripts]-_-")
+
+AddButton("Sp Hub Brookhaven - Not keyless", function()
+
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+loadstring(game:HttpGet("https://raw.githubusercontent.com/as6cd0/SP_Hub/refs/heads/main/Brookhaven"))()
+
+
+
+end) -- dont delete this
+
+AddButton("Coming soon", function()
+
+print("coming soon")
+
+end) -- main of categories
 -- ====================================================================================================
 
