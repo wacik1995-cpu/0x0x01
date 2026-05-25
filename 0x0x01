@@ -28,7 +28,7 @@ local CHAT_SLIGHT_PURPLE = Color3.fromRGB(185, 140, 235)
 -- ====================================================================================================
 --  ZDE MŮŽEŠ UPRAVIT TEXT V OKNĚ UPDATE (PODPORUJE NOVÉ ŘÁDKY \n)
 -- ====================================================================================================
-local GlobalUpdateTextString = "--- Update @ Texts: ---\n\n i Created New 0x0x01 Ui. v6 "
+local GlobalUpdateTextString = "--- Update @ Texts: ---\n\n New released 0x0x01 Hub.Updated : Discord Link with Fully working. The Older one doesn't working so i Updated link.-:) "
 
 local ModernHub = Instance.new("ScreenGui")
 ModernHub.Name = "ModernHub"
