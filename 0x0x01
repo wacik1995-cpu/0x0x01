@@ -2020,7 +2020,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/B
 end) -- Dont delete thiss
 
 AddButton("0x0x01 Pos Teleporter ", function() 
-     --// 0x0x01 Pose Teleporter
+--// 0x0x01 Pose Teleporter
 --// Ultimate Purple Animated Edition
 
 local Players = game:GetService("Players")
@@ -2062,7 +2062,7 @@ topbar.BackgroundColor3 = Color3.fromRGB(70,0,110)
 topbar.BorderSizePixel = 0
 
 ---------------------------------------------------
--- DRAGGABLE SYSTEM
+-- DRAGGABLE
 ---------------------------------------------------
 
 local dragging = false
@@ -2398,7 +2398,7 @@ local function CreateGlowBox(position, poseName)
 end
 
 ---------------------------------------------------
--- TELEPORT ANIMATION
+-- TELEPORT EFFECT
 ---------------------------------------------------
 
 local function TeleportEffect(character, destination)
@@ -2409,6 +2409,12 @@ local function TeleportEffect(character, destination)
 		)
 
 	if not hrp then return end
+
+	local oldTransparency = {}
+
+	------------------------------------------------
+	-- START BALL
+	------------------------------------------------
 
 	local startBall = Instance.new("Part")
 	startBall.Shape = Enum.PartType.Ball
@@ -2431,17 +2437,18 @@ local function TeleportEffect(character, destination)
 
 	Debris:AddItem(startBall,0.4)
 
+	------------------------------------------------
+	-- FADE CHARACTER
+	------------------------------------------------
+
 	for _,v in pairs(character:GetDescendants()) do
 
 		if v:IsA("BasePart") then
 
-			TweenService:Create(
-				v,
-				TweenInfo.new(0.15),
-				{
-					Transparency = 1
-				}
-			):Play()
+			oldTransparency[v] =
+				v.Transparency
+
+			v.Transparency = 1
 
 		end
 
@@ -2449,7 +2456,15 @@ local function TeleportEffect(character, destination)
 
 	task.wait(0.18)
 
+	------------------------------------------------
+	-- TELEPORT
+	------------------------------------------------
+
 	hrp.CFrame = destination
+
+	------------------------------------------------
+	-- END BALL
+	------------------------------------------------
 
 	local endBall = Instance.new("Part")
 	endBall.Shape = Enum.PartType.Ball
@@ -2472,6 +2487,10 @@ local function TeleportEffect(character, destination)
 
 	Debris:AddItem(endBall,0.5)
 
+	------------------------------------------------
+	-- RESTORE CHARACTER
+	------------------------------------------------
+
 	for _,v in pairs(character:GetDescendants()) do
 
 		if v:IsA("BasePart") then
@@ -2480,7 +2499,8 @@ local function TeleportEffect(character, destination)
 				v,
 				TweenInfo.new(0.2),
 				{
-					Transparency = 0
+					Transparency =
+						oldTransparency[v] or 0
 				}
 			):Play()
 
@@ -2582,6 +2602,10 @@ local function createPoseUI(name, cf)
 
 	local hidden = false
 
+	------------------------------------------------
+	-- TELEPORT
+	------------------------------------------------
+
 	tp.MouseButton1Click:Connect(function()
 
 		local character = player.Character
@@ -2600,6 +2624,10 @@ local function createPoseUI(name, cf)
 		end
 
 	end)
+
+	------------------------------------------------
+	-- CHANGE
+	------------------------------------------------
 
 	change.MouseButton1Click:Connect(function()
 
@@ -2628,6 +2656,10 @@ local function createPoseUI(name, cf)
 
 	end)
 
+	------------------------------------------------
+	-- HIDE BOX
+	------------------------------------------------
+
 	hide.MouseButton1Click:Connect(function()
 
 		hidden = not hidden
@@ -2654,6 +2686,10 @@ local function createPoseUI(name, cf)
 			or "Hide Box"
 
 	end)
+
+	------------------------------------------------
+	-- DELETE
+	------------------------------------------------
 
 	deleteBtn.MouseButton1Click:Connect(function()
 
